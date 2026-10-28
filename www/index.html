@@ -25,12 +25,18 @@ body.listening{background:var(--amber);color:var(--ink)}
 .app{min-height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding:calc(24px + env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) 0 max(24px,env(safe-area-inset-left,0px))}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .top .word{flex:1 1 auto}
+.word.instr{font-size:40px;line-height:44px;letter-spacing:0;font-stretch:112%;white-space:normal}
+@media (max-width:380px){.word.instr{font-size:34px;line-height:38px}}
+.ctxline{font-size:16px;line-height:24px;color:var(--grey);margin:0}
+body.session .stage{justify-content:flex-start}
+body.session .micbtn{width:64px;height:64px;font-size:40px}
 .word{all:unset;display:block;min-width:0;max-width:100%;cursor:pointer;font-family:var(--display);font-stretch:125%;font-weight:800;font-size:72px;line-height:72px;letter-spacing:.01em;white-space:pre-line;text-wrap:balance}
 .word:focus-visible{outline:3px solid var(--amber);outline-offset:4px}
 .close{all:unset;flex:none;width:48px;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--grey);font-family:"Material Symbols Outlined";font-size:32px;line-height:1}
 body.listening .close{color:var(--ink)}
 .stage{flex:1 1 auto;display:flex;flex-direction:column;justify-content:flex-end;gap:24px;min-width:0}
 .big{font-size:24px;line-height:32px;font-weight:500;margin:0;text-wrap:pretty}
+.word{text-wrap:balance}
 .strong{font-weight:600}
 .small{font-size:16px;line-height:24px;color:var(--grey);margin:0;text-wrap:pretty}
 body.listening .small{color:var(--ink);opacity:.72}
@@ -136,14 +142,14 @@ const QUESTS = [
   { n: "Home to Roost", al: ["home to roost", "roost"], who: "Shani",
     note: "Steps placed by MetaForge. Route in our own words from Destructoid and All Things How. It's underground, so the star marks the spot above you.",
     steps: [
-      { t: "Reach the back of the Blue Gate tunnels", go: "Head into the traffic tunnels and keep left, past the burnt-out vehicles, to the back wall.", sh: "Back of the tunnels. Into the traffic tunnels, keep left to the back wall.", pin: HTR(1), al: ["back of the tunnel", "tunnel entrance", "the tunnels"] },
-      { t: "Scan an Android at the back of the Traffic Tunnels", go: "At the back wall, the Android stands behind a booth. Get close to scan it.", sh: "Scan the Android. It's behind the booth at the back wall. Get close to scan.", pin: HTR(2), al: ["android", "scan"] },
-      { t: "Head to the MANTIKOR locker room", go: "From the Android, take the route on your right to a short staircase and a door into the Security Wing. Go up the second short flight. The locker room door is immediately on your right. You may need to breach it.", sh: "Locker room. From the Android, go right, up two short flights. Door on your right.", pin: HTR(3), al: ["mantikor", "locker room"] },
-      { t: "Search the locker room for clues", go: "Interact with the mural on the back wall of the locker room.", sh: "Clues. Check the mural on the back wall.", pin: HTR(4), al: ["clue", "mural"] },
-      { t: "Read the final vehicle weighing logs", go: "Go back down the stairs to the platform over the underground garage. The weighing station is among the parked vehicles, panel on its right side.", sh: "Weighing logs. Back down the stairs to the garage platform. Panel on the weighing station's right.", pin: HTR(5), al: ["weighing", "logs", "weigh"] },
-      { t: "Optional: find the hidden key", go: "Behind the concrete barrier next to the weighing terminal. It opens the Confiscation Room, so grab it if you haven't got one.", sh: "Hidden key. Behind the concrete barrier by the weighing terminal.", pin: HTR(6), al: ["hidden key", "the key", "spare key"] },
-      { t: "Enter the Confiscation Room", go: "Back up on the Security Wing platform, with the stairs on your right. The door is locked and needs the Confiscation Room key.", sh: "Confiscation Room. Back up to the Security Wing platform. Locked door, needs the key.", pin: HTR(7), al: ["confiscation"] },
-      { t: "Send MANTIKOR's last security recordings to Shani", go: "Inside the Confiscation Room, the white box is on top of the central server rack. Climb the rack or the crates beside it.", sh: "Send the recordings. White box on top of the central server rack. Climb up.", pin: HTR(8), al: ["recording", "white box", "server rack"] }
+      { t: "Reach the back of the Blue Gate tunnels", go: "Head into the traffic tunnels and keep left, past the burnt-out vehicles, to the back wall.", show: "Into the tunnels. Keep left to the back wall.", pin: HTR(1), al: ["back of the tunnel", "tunnel entrance", "the tunnels"] },
+      { t: "Scan an Android at the back of the Traffic Tunnels", go: "At the back wall, the Android stands behind a booth. Get close to scan it.", show: "Android behind the booth. Get close to scan.", pin: HTR(2), al: ["android", "scan"] },
+      { t: "Head to the MANTIKOR locker room", go: "From the Android, take the route on your right to a short staircase and a door into the Security Wing. Go up the second short flight. The locker room door is immediately on your right. You may need to breach it.", show: "Right from the Android. Up two flights. Door on your right.", pin: HTR(3), al: ["mantikor", "locker room"] },
+      { t: "Search the locker room for clues", go: "Interact with the mural on the back wall of the locker room.", show: "Mural on the back wall.", pin: HTR(4), al: ["clue", "mural"] },
+      { t: "Read the final vehicle weighing logs", go: "Go back down the stairs to the platform over the underground garage. The weighing station is among the parked vehicles, panel on its right side.", show: "Down to the garage platform. Panel on the weighing station's right.", pin: HTR(5), al: ["weighing", "logs", "weigh"] },
+      { t: "Optional: find the hidden key", go: "Behind the concrete barrier next to the weighing terminal. It opens the Confiscation Room, so grab it if you haven't got one.", show: "Behind the barrier by the weighing terminal.", pin: HTR(6), al: ["hidden key", "the key", "spare key"] },
+      { t: "Enter the Confiscation Room", go: "Back up on the Security Wing platform, with the stairs on your right. The door is locked and needs the Confiscation Room key.", show: "Up to the Security Wing platform. Locked door, use the key.", pin: HTR(7), al: ["confiscation"] },
+      { t: "Send MANTIKOR's last security recordings to Shani", go: "Inside the Confiscation Room, the white box is on top of the central server rack. Climb the rack or the crates beside it.", show: "White box on top of the server rack. Climb up.", pin: HTR(8), al: ["recording", "white box", "server rack"] }
     ] },
   { n: "Nothing Ventured", al: ["nothing ventured"], who: "Apollo", note: "Spawn points: MetaForge.",
     steps: [
@@ -226,24 +232,24 @@ const LISTING = [" all ", "list", "how many", "what are the"];
 
 function askWhere(raw) {
   S.pending = { q: raw, asks: S.pending ? S.pending.asks : 0 }; save();
-  return { word: "WHERE?", say: "Where are you?", text: "Where are you? Name something you can see: an airshaft, a hatch, a tower or a building." };
+  return { show: "Where are you?", say: "Where are you? Name something you can see, like an airshaft, a hatch or a building." };
 }
 function askStill(raw) {
   S.pending = { q: raw, asks: S.pending ? S.pending.asks : 0 }; save();
-  return { word: "CHECK", say: "Still near " + S.place.n + "?", text: "Still near " + S.place.n + "? You told me " + Math.round(placeAge()) + " minutes ago. Say yes, or where you are now." };
+  return { show: "Still near " + S.place.n + "?", say: "Are you still near " + S.place.n + "? You told me " + Math.round(placeAge()) + " minutes ago.", ctx: "Say yes, or where you are now" };
 }
 function resolvePending(q) {
   const p = S.pending, t = norm(q);
   const place = findPlace(t);
-  if (place) { S.place = place; S.placeAt = Date.now(); S.raidAt = S.raidAt || Date.now(); S.pending = null; save(); const a = answer(p.q); a.text = "Got it, " + place.n + ". " + a.text; return a; }
+  if (place) { S.place = place; S.placeAt = Date.now(); S.raidAt = S.raidAt || Date.now(); S.pending = null; save(); const a = answer(p.q); a.say = "Got it. " + a.say; return a; }
   if (/\b(yes|yeah|yep|yup|still|same|correct)\b/.test(t) && S.place) { S.placeAt = Date.now(); S.pending = null; save(); return answer(p.q); }
   if (/(don't know|dont know|no idea|not sure|lost|no clue|skip)/.test(t)) { S.pending = null; save(); return answer(p.q, { general: true }); }
   if (/\b(no|nope|moved)\b/.test(t)) { S.place = null; save(); return askWhere(p.q); }
   const newQ = has(t, ["extract", "exit", "quest", "where's", "where is", "what", "died", "new raid", "recap", "where were we", "step", "next", "done", ...ENEMY_WORDS]) || findQuest(t);
   if (newQ) { S.pending = null; save(); return null; }
   p.asks += 1; save();
-  if (p.asks >= 2) { S.pending = null; save(); const a = answer(p.q, { general: true }); a.text = "I can't place that, so here's everything. " + a.text; return a; }
-  return { word: "WHERE?", say: "I can't place that. Can you see an airshaft, a hatch or a tower?", text: "I can't place that on the map. Can you see an airshaft, a hatch or a tower?" };
+  if (p.asks >= 2) { S.pending = null; save(); const a = answer(p.q, { general: true }); a.say = "I can't place that, so here's everything. " + a.say; return a; }
+  return { show: "Can you see an airshaft, a hatch or a tower?", say: "I can't place that. Can you see an airshaft, a hatch or a tower?" };
 }
 
 const NUM = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, first:1, second:2, third:3, fourth:4, fifth:5, sixth:6, seventh:7, eighth:8, last:99 };
@@ -266,8 +272,9 @@ function stepAnswer(q, i, prefix) {
   const last = i === q.steps.length - 1;
   const tail = last ? (q.who ? " That's the last step. Then hand it in to " + q.who + "." : " That's the last step.") : " Say done when you've finished.";
   const firstSentence = s => (s.match(/^[^.!?]*[.!?]/) || [s])[0];
-  const short = st.sh || firstSentence(go);
-  return { word: "STEP\n" + (i + 1), full: (prefix || "") + "Step " + (i + 1) + ". " + st.t + ". " + go, say: (prefix || "") + "Step " + (i + 1) + ". " + short, text: (prefix || "") + "Step " + (i + 1) + " of " + q.steps.length + ": " + st.t + ". " + go + tail, map, note: map ? q.note : "" };
+  const show = st.show || (st.pin && !st.go ? st.t + "." : firstSentence(go));
+  const say = (prefix || "") + "Step " + (i + 1) + ", " + st.t.charAt(0).toLowerCase() + st.t.slice(1) + ". " + go;
+  return { show, say, full: say + tail, ctx: q.n + ", step " + (i + 1) + " of " + q.steps.length, map, text: show };
 }
 function stepIntent(t) {
   const named = findQuest(t);
@@ -280,7 +287,7 @@ function stepIntent(t) {
   if (hit >= 0 && hit !== (S.step || 0)) return stepAnswer(cur, hit, "That's step " + (hit + 1) + ". ");
   if (has(t, [" done ", " next ", "did that", "found it", "finished", "already done", "what now", "completed", "got that"])) {
     const i = (S.step || 0) + 1;
-    if (i >= cur.steps.length) { S.step = cur.steps.length - 1; save(); return { word: "DONE", say: "That was the last step." + (cur.who ? " Hand it in to " + cur.who + "." : ""), text: "That was the last step of " + cur.n + "." + (cur.who ? " Hand it in to " + cur.who + "." : "") }; }
+    if (i >= cur.steps.length) { S.step = cur.steps.length - 1; save(); return { show: cur.who ? "All done. Hand it in to " + cur.who + "." : "All done.", say: "That was the last step of " + cur.n + "." + (cur.who ? " Hand it in to " + cur.who + "." : ""), ctx: cur.n }; }
     return stepAnswer(cur, i);
   }
   if (has(t, ["previous", "go back a step", "step back"])) return stepAnswer(cur, (S.step || 0) - 1);
@@ -294,12 +301,13 @@ function answer(raw, opts) {
   const terse = inRaid();
   const ps = opts.general ? "general" : posState();
 
+  if (has(t, ["that's all", "thats all", "stop listening", "thanks", "thank you", "cheers", "that's it", "thats it"]) && t.trim().split(" ").length <= 4) return { show: "Standing by.", say: "Standing by.", follow: false, keepLast: true };
   if (S.last && S.last.a && has(t, ["more detail", "more details", "tell me more", "say again", "say that again", "repeat", "not sure", "didn't catch", "didnt catch", " what ", "pardon", "explain"]) && t.trim().split(" ").length <= 6) {
-    const a = Object.assign({}, S.last.a); a.say = a.full || a.text; return a;
+    const a = Object.assign({}, S.last.a); a.say = a.full || a.say; return a;
   }
-  if (has(t, [" new raid", "just spawned", " spawned"])) { S.place = null; S.pending = null; S.minutesLeft = null; S.raidAt = Date.now(); save(); return { word: "READY", say: "New raid. Good luck.", text: "New raid. I'll ask where you are when an answer needs it." }; }
-  if (has(t, [" i died", " died ", " dead "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { word: "NOTED", say: "Unlucky. Your quest is still here.", text: "Raid cleared. Your quest and step are still here." }; }
-  if (has(t, ["extracted", " made it out", " got out "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { word: "NOTED", say: "Nice. Raid cleared.", text: "Raid cleared." }; }
+  if (has(t, [" new raid", "just spawned", " spawned"])) { S.place = null; S.pending = null; S.minutesLeft = null; S.raidAt = Date.now(); save(); return { show: "New raid. Good luck.", say: "New raid. Good luck. I'll ask where you are when an answer needs it." }; }
+  if (has(t, [" i died", " died ", " dead "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { show: "Unlucky. Your quest's still here.", say: "Unlucky. Your quest and step are still here when you drop back in.", ctx: S.quest ? S.quest + ", step " + ((S.step || 0) + 1) : "" }; }
+  if (has(t, ["extracted", " made it out", " got out "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { show: "Nice. Raid cleared.", say: "Nice one. Raid cleared." }; }
   if (has(t, ["where were we", "recap"])) {
     const bits = [];
     const cq = QUESTS.find(q => q.n === S.quest);
@@ -307,7 +315,7 @@ function answer(raw, opts) {
     if (S.place) bits.push("Last place you told me: " + S.place.n + ".");
     const m = minsNow(); if (m != null) bits.push("About " + m + " minutes left, from what you told me.");
     const s = bits.length ? bits.join(" ") : "Nothing yet. Tell me a quest, or where you are.";
-    return { word: "RECAP", say: s, text: s };
+    return { show: cq ? cq.n + ", step " + ((S.step || 0) + 1) + "." : "Nothing yet.", say: s, ctx: cq ? cq.steps[S.step || 0].t : "" };
   }
 
   const mm = t.match(/(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*(minute|min)/);
@@ -317,7 +325,7 @@ function answer(raw, opts) {
   const setsLocation = placeMention && (/\b(i'm|i am|im)\s+(at|near|in|by|next to|outside|on)\b/.test(t) || (/\b(at|near|by)\b/.test(t) && !has(t, ["where", "how"])));
   if (setsLocation) {
     S.place = { n: placeMention.n, y: placeMention.y, x: placeMention.x }; S.placeAt = Date.now(); S.raidAt = S.raidAt || Date.now(); save();
-    if (!has(t, ["extract", "exit", "out", "leave", "step", "where", ...ENEMY_WORDS])) return { word: "NOTED", say: "Got it, " + placeMention.n + ".", text: "You're at " + placeMention.n + ".", map: { you: S.place, stars: [], others: [] } };
+    if (!has(t, ["extract", "exit", "out", "leave", "step", "where", ...ENEMY_WORDS])) return { show: "Got it. " + placeMention.n.charAt(0).toUpperCase() + placeMention.n.slice(1) + ".", say: "Got it, " + placeMention.n + "." };
   }
   const psNow = opts.general ? "general" : posState();
 
@@ -325,7 +333,7 @@ function answer(raw, opts) {
   if (stepRes) return stepRes;
 
   const otherMap = OTHER_MAPS.find(m => t.includes(m));
-  if (otherMap && !has(t, ["blue gate"])) return { word: "NO MAP", say: "I only have Blue Gate so far.", text: "Spottr only has Blue Gate's map so far. More maps are on the way." };
+  if (otherMap && !has(t, ["blue gate"])) return { show: "Blue Gate only, for now.", say: "I only have Blue Gate's map so far." };
 
   if (has(t, ["extract", "exit", "way out", "get out", "get me out", "out of here", "leave", "airshaft", "evac", "escape"])) {
     const m = minsNow(); const urgent = m != null && m <= 2; const rush = m != null && m <= 5 ? "Move now. " : "";
@@ -334,15 +342,15 @@ function answer(raw, opts) {
     if (wantsNearest && !urgent && psNow === "none") return askWhere(raw);
     if (psNow !== "fresh" || !wantsNearest) {
       const tail = urgent ? " Tell me where you are for the nearest." : "";
-      return { word: "EXIT", say: rush + "Four airshafts: Warehouse, Overlook, Forest and Cliffside." + tail, text: rush + "Four airshafts on Blue Gate, all starred: Warehouse, Overlook, Forest and Cliffside." + tail, map: { you: psNow === "fresh" ? S.place : null, stars: EXITS, others: [] }, note: "Map: MetaForge." };
+      return { show: (rush ? "Move. " : "") + "Four airshafts, starred.", say: rush + "There are four airshafts: Warehouse, Overlook, Forest and Cliffside. They're all starred on the map." + tail, map: { you: psNow === "fresh" ? S.place : null, stars: EXITS } };
     }
     const best = near(S.place, EXITS);
-    const s = rush + best.n + ", " + compass(S.place, best) + " of you.";
-    return { word: "EXIT", say: s, text: s + (terse ? "" : " Hatches can be closer, but need a Raider Hatch key."), map: { you: S.place, stars: [best], others: EXITS.filter(e => e !== best) }, note: "Map: MetaForge." };
+    const dir = compass(S.place, best);
+    return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + "Head " + dir + " to " + best.n + ". It's your nearest way out." + (terse ? "" : " A hatch can be closer, but you'd need a Raider Hatch key."), map: { you: S.place, stars: [best] } };
   }
   if (has(t, ["hatch"])) {
-    if (psNow === "fresh") { const b = near(S.place, HATCHES); const s = b.n + ", " + compass(S.place, b) + " of you. You'll need a Raider Hatch key."; return { word: "HATCH", say: s, text: s, map: { you: S.place, stars: [b], others: HATCHES.filter(h => h !== b) }, note: "Map: MetaForge." }; }
-    return { word: "HATCH", say: "Four hatches, all starred. You'll need a key.", text: "Four Raider Hatches on Blue Gate, all starred: Prefab, Fragrant, Lucky and Reinforced. They need a Raider Hatch key.", map: { you: null, stars: HATCHES, others: [] }, note: "Map: MetaForge." };
+    if (psNow === "fresh") { const b = near(S.place, HATCHES); const dir = compass(S.place, b); return { show: b.n + ", " + dir + ". Needs a key.", say: "The nearest hatch is " + b.n + ", " + dir + " of you. You'll need a Raider Hatch key.", map: { you: S.place, stars: [b] } }; }
+    return { show: "Four hatches, starred. Needs a key.", say: "There are four Raider Hatches: Prefab, Fragrant, Lucky and Reinforced. They're starred on the map, and you'll need a key.", map: { you: null, stars: HATCHES } };
   }
 
   const enemy = ENEMY_WORDS.find(k => t.includes(k));
@@ -351,18 +359,19 @@ function answer(raw, opts) {
     const wantsNearest = has(t, NEAREST);
     if (wantsNearest && psNow === "stale") return askStill(raw);
     if (wantsNearest && psNow === "none") return askWhere(raw);
-    if (psNow === "fresh") { const b = near(S.place, pts); const s = "Nearest " + enemy + " spawn is " + compass(S.place, b) + " of you."; return { word: "ENEMY", say: s, text: s + " " + pts.length + " spawn points on Blue Gate.", map: { you: S.place, stars: [b], others: pts.filter(p => p !== b) }, note: "Spawn points: MetaForge." }; }
-    const s = pts.length + " " + enemy + " spawn points on Blue Gate, all starred.";
-    return { word: "ENEMY", say: s, text: s + " Tell me where you are for the nearest.", map: { you: null, stars: pts, others: [] }, note: "Spawn points: MetaForge." };
+    const E = enemy.charAt(0).toUpperCase() + enemy.slice(1);
+    if (psNow === "fresh") { const b = near(S.place, pts); const dir = compass(S.place, b); return { show: "Nearest " + E + ": " + dir + ".", say: "The nearest " + enemy + " spawn is " + dir + " of you.", map: { you: S.place, stars: [b] } }; }
+    return { show: pts.length + " " + E + " spawns, starred.", say: "There are " + pts.length + " " + enemy + " spawn points on Blue Gate. They're starred on the map. Tell me where you are and I'll find the nearest.", map: { you: null, stars: pts } };
   }
 
   if (placeMention && has(t, ["where"])) {
-    const s = placeMention.n + (psNow === "fresh" ? ", " + compass(S.place, placeMention) + " of you." : ".");
-    return { word: "PLACE", say: s, text: s, map: { you: psNow === "fresh" ? S.place : null, stars: [placeMention], others: [] }, note: "Map: MetaForge." };
+    const P1 = placeMention.n.charAt(0).toUpperCase() + placeMention.n.slice(1);
+    const dir = psNow === "fresh" ? compass(S.place, placeMention) : "";
+    return { show: P1 + (dir ? ", " + dir + "." : "."), say: P1 + (dir ? " is " + dir + " of you." : " is starred on the map."), map: { you: psNow === "fresh" ? S.place : null, stars: [placeMention] } };
   }
-  if (has(t, ["grandioso", "launch tower"])) return { word: "NO MAP", say: "That's not on Blue Gate. I only have Blue Gate so far.", text: "That's on another map. Spottr only has Blue Gate so far." };
+  if (has(t, ["grandioso", "launch tower"])) return { show: "Blue Gate only, for now.", say: "That's on another map. I only have Blue Gate so far." };
 
-  return { word: "SAY AGAIN", say: "Try a quest and step, or ask for the way out.", text: "Try “I'm on Home to Roost, step 3”, “I'm at the village” or “where can I extract?”" };
+  return { show: "Say again?", say: "Sorry, say that again? You can tell me a quest and step, or ask for the way out.", ctx: "Try: I'm on Home to Roost, step 3" };
 }
 
 /* =================== voice: native app or browser =================== */
@@ -371,13 +380,16 @@ const WebRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 let voice = null;
 function pickVoice() { try { const v = speechSynthesis.getVoices(); voice = v.find(x => /en-GB/i.test(x.lang)) || v.find(x => /^en/i.test(x.lang)) || null; } catch (e) {} }
 try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {}
-function speak(s) {
-  if (!s) return;
+let speakId = 0;
+function speak(s, done) {
+  if (!s) { if (done) done(); return; }
+  const id = ++speakId;
+  const fin = ok => { if (id !== speakId) return; setVoiceState("idle"); if (ok && done) done(); };
   setVoiceState("speaking");
-  if (CAP && CAP.TextToSpeech) { CAP.TextToSpeech.stop().catch(() => {}).finally(() => CAP.TextToSpeech.speak({ text: s, lang: "en-GB", rate: 1.0 }).catch(() => {}).finally(() => setVoiceState("idle"))); return; }
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(s); if (voice) u.voice = voice; u.rate = 1.05; u.onend = u.onerror = () => setVoiceState("idle"); speechSynthesis.speak(u); } catch (e) { setVoiceState("idle"); }
+  if (CAP && CAP.TextToSpeech) { CAP.TextToSpeech.stop().catch(() => {}).finally(() => CAP.TextToSpeech.speak({ text: s, lang: "en-GB", rate: 1.0 }).then(() => fin(true)).catch(() => fin(false))); return; }
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(s); if (voice) u.voice = voice; u.rate = 1.05; u.onend = () => fin(true); u.onerror = () => fin(false); speechSynthesis.speak(u); } catch (e) { fin(false); }
 }
-function stopSpeaking() { setVoiceState("idle"); try { if (CAP && CAP.TextToSpeech) CAP.TextToSpeech.stop(); else speechSynthesis.cancel(); } catch (e) {} }
+function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (CAP && CAP.TextToSpeech) CAP.TextToSpeech.stop(); else speechSynthesis.cancel(); } catch (e) {} }
 
 let listening = false, webRec = null;
 function setVoiceState(s) {
@@ -386,7 +398,8 @@ function setVoiceState(s) {
   const el = document.getElementById("vstate"); if (el) el.textContent = label;
   const m = document.getElementById("mic"); if (m) { m.textContent = s === "listening" ? "graphic_eq" : s === "speaking" ? "volume_up" : "mic"; m.setAttribute("aria-label", label); }
 }
-async function listen() {
+async function listen(opts) {
+  const auto = !!(opts && opts.auto);
   if (listening) { stopListening(); return; }
   if (document.body.classList.contains("speaking")) { stopSpeaking(); return; }
   stopSpeaking();
@@ -399,8 +412,8 @@ async function listen() {
       const r = await CAP.SpeechRecognition.start({ language: "en-GB", maxResults: 1, partialResults: false, popup: false });
       listening = false;
       const text = r && r.matches && r.matches[0];
-      if (text) handle(text); else { renderBack(); showError("I didn't catch that. Tap and try again."); }
-    } catch (e) { listening = false; renderBack(); showError("I didn't catch that. Tap and try again."); }
+      if (text) handle(text); else if (auto) renderBack(); else { renderBack(); showError("Didn't catch that. Tap and try again."); }
+    } catch (e) { listening = false; renderBack(); if (!auto) showError("Didn't catch that. Tap and try again."); }
     return;
   }
   if (!WebRec) { showError("Voice isn't available here. Open Spottr on your phone."); return; }
@@ -410,7 +423,8 @@ async function listen() {
   webRec.onresult = e => { let interim = ""; for (const r of e.results) { if (r.isFinal) finalText = r[0].transcript; else interim += r[0].transcript; } renderListening(finalText || interim); };
   webRec.onerror = e => {
     listening = false; renderBack();
-    const msg = e.error === "not-allowed" || e.error === "service-not-allowed" ? "Spottr needs the microphone. Allow it for this site in Chrome's settings." : e.error === "network" ? "Speech needs a connection. Check your Wi-Fi and tap again." : e.error === "no-speech" ? "I didn't hear anything. Tap and try again." : "I didn't catch that. Tap and try again.";
+    if (auto && (e.error === "no-speech" || e.error === "aborted")) return;
+    const msg = e.error === "not-allowed" || e.error === "service-not-allowed" ? "Spottr needs the microphone. Allow it for this site in Chrome's settings." : e.error === "network" ? "Speech needs a connection. Check your Wi-Fi and tap again." : e.error === "no-speech" ? "Didn't hear anything. Tap and try again." : "Didn't catch that. Tap and try again.";
     showError(msg);
   };
   webRec.onend = () => { const was = listening; listening = false; if (finalText) handle(finalText); else if (was) renderBack(); };
@@ -420,9 +434,11 @@ function stopListening() { try { if (CAP && CAP.SpeechRecognition) CAP.SpeechRec
 
 /* =================== rendering =================== */
 /* the big top word: same place and style on every screen; shrinks only when a line is too wide */
-function setWord(txt) {
+function setWord(txt, instr) {
   const w = document.getElementById("word");
   w.hidden = false; w.textContent = txt; w.style.fontSize = ""; w.style.lineHeight = "";
+  w.classList.toggle("instr", !!instr);
+  if (instr) return;
   requestAnimationFrame(() => {
     const avail = w.parentElement.clientWidth - (document.getElementById("close").hidden ? 0 : 64);
     w.style.whiteSpace = "pre";
@@ -431,7 +447,7 @@ function setWord(txt) {
     if (need > avail && avail > 0) { const size = Math.max(32, Math.floor(72 * avail / need)); w.style.fontSize = size + "px"; w.style.lineHeight = size + "px"; }
   });
 }
-window.addEventListener("resize", () => setWord(document.getElementById("word").textContent));
+window.addEventListener("resize", () => { const w = document.getElementById("word"); setWord(w.textContent, w.classList.contains("instr")); });
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let lmap = null;
@@ -439,10 +455,10 @@ function clearMap() { if (lmap) { lmap.remove(); lmap = null; } }
 
 function renderReady() {
   clearMap();
-  document.body.classList.remove("listening"); $("close").hidden = true;
+  document.body.classList.remove("listening", "session"); $("close").hidden = true;
   const hr = new Date().getHours();
-  const part = hr < 5 ? "EVENING" : hr < 12 ? "MORNING" : hr < 18 ? "AFTERNOON" : "EVENING";
-  setWord(part + ",\nRAIDER.");
+  const part = hr < 5 ? "Evening" : hr < 12 ? "Morning" : hr < 18 ? "Afternoon" : "Evening";
+  setWord(part + ",\nRaider.");
   const rows = ['<p class="big">What do you need help with?</p>'];
   const cq = QUESTS.find(q => q.n === S.quest);
   if (cq) { const i = Math.min(S.step || 0, cq.steps.length - 1); rows.push('<div><p class="big strong">' + esc(cq.n) + '</p><p class="small">Step ' + (i + 1) + " of " + cq.steps.length + ": " + esc(cq.steps[i].t) + "</p></div>"); }
@@ -455,21 +471,19 @@ function renderReady() {
 function renderListening(partial) {
   clearMap(); setVoiceState("listening");
   document.body.classList.add("listening");
-  setWord("GO\nAHEAD");
+  setWord("Go\nahead.");
   $("stage").innerHTML = '<p class="big">' + esc(partial || "Listening…") + "</p>";
 }
 function renderBack() { setVoiceState("idle"); document.body.classList.remove("listening"); if (S.last) renderAnswer(S.last.q, S.last.a); else renderReady(); }
-function showError(msg) { setVoiceState("idle"); document.body.classList.remove("listening"); $("close").hidden = false; clearMap(); setWord("SAY\nAGAIN"); $("stage").innerHTML = '<p class="big">' + esc(msg) + "</p>"; }
+function showError(msg) { setVoiceState("idle"); document.body.classList.remove("listening"); document.body.classList.add("session"); $("close").hidden = false; clearMap(); setWord(msg, true); $("stage").innerHTML = ""; }
 
 function renderAnswer(q, a) {
   clearMap();
-  document.body.classList.remove("listening"); $("close").hidden = false;
-  setWord(a.word);
-  let html = "";
+  document.body.classList.remove("listening"); document.body.classList.add("session"); $("close").hidden = false;
+  setWord(a.show || a.text || "", true);
+  let html = a.ctx ? '<p class="ctxline">' + esc(a.ctx) + "</p>" : "";
   const hasMap = a.map && (a.map.stars.length || a.map.you);
   if (hasMap) html += '<div class="mapwrap"><div class="map" id="map" role="img" aria-label="' + esc(mapLabel(a.map)) + '"></div><div class="mapctl"><button type="button" id="zin" aria-label="Zoom in">add</button><button type="button" id="zout" aria-label="Zoom out">remove</button><button type="button" id="recentre" aria-label="Recentre">my_location</button><button type="button" id="full" aria-label="Whole map">zoom_out_map</button></div><div class="mapnote" id="mapnote" hidden></div></div>';
-  html += '<p class="big">' + esc(a.text) + "</p>";
-  html += '<p class="small">You asked: “' + esc(q) + "”" + (a.note ? ". " + esc(a.note) : "") + "</p>";
   $("stage").innerHTML = html;
   if (hasMap) drawMap(a.map);
 }
@@ -487,13 +501,11 @@ function drawMap(m) {
   const tl = L.tileLayer(MAP.tiles, { tileSize: 512, maxNativeZoom: 5, noWrap: true, bounds: [[37.2, 78.5], [16218, 16271]], attribution: 'Map and markers: <a href="https://metaforge.app/arc-raiders" target="_blank" rel="noopener">MetaForge</a>' }).addTo(lmap);
   tl.on("tileerror", () => { fails++; if (fails === 3) { $("mapnote").hidden = false; $("mapnote").textContent = "Map needs a connection. The answer above still stands."; } });
   const ll = p => [p.y, p.x];
-  (m.others || []).forEach(p => L.circleMarker(ll(p), { radius: 5, color: "#0F1218", weight: 2, fillColor: "#8A93A3", fillOpacity: 1 }).addTo(lmap));
   if (m.you && m.stars.length === 1) L.polyline([ll(m.you), ll(m.stars[0])], { color: "#F2F0EA", weight: 3, opacity: .7, dashArray: "6 8" }).addTo(lmap);
   m.stars.forEach(p => {
-    const mk = L.marker(ll(p), { icon: L.divIcon({ className: "", html: STAR, iconSize: [32, 32], iconAnchor: [16, 17] }), keyboard: false }).addTo(lmap);
-    if (m.stars.length <= 4) mk.bindTooltip(esc(p.n), { permanent: true, direction: "right", offset: [14, 0], className: "lbl" });
+    L.marker(ll(p), { icon: L.divIcon({ className: "", html: m.stars.length > 1 ? STAR.replace(/32/g, "24") : STAR.replace(/"32"/g, '"40"'), iconSize: m.stars.length > 1 ? [24, 24] : [40, 40], iconAnchor: m.stars.length > 1 ? [12, 13] : [20, 21] }), keyboard: false }).addTo(lmap);
   });
-  if (m.you) L.marker(ll(m.you), { icon: L.divIcon({ className: "", html: YOU, iconSize: [24, 24], iconAnchor: [12, 12] }), keyboard: false }).addTo(lmap).bindTooltip("You", { permanent: true, direction: "left", offset: [-12, 0], className: "lbl you" });
+  if (m.you) L.marker(ll(m.you), { icon: L.divIcon({ className: "", html: YOU, iconSize: [24, 24], iconAnchor: [12, 12] }), keyboard: false }).addTo(lmap);
   const pts = [...m.stars, ...(m.you ? [m.you] : [])].map(ll);
   const frame = () => {
     if (pts.length === 1) lmap.setView(pts[0], 4);
@@ -510,9 +522,11 @@ function handle(q) {
   q = (q || "").trim(); if (!q) return;
   let a = S.pending ? resolvePending(q) : null;
   if (!a) a = answer(q);
+  if (a.keepLast && S.last) { renderAnswer(S.last.q, S.last.a); speak(a.say); return; }
   S.last = { q, a }; save();
   renderAnswer(q, a);
-  speak(a.say);
+  /* keep the conversation going: listen once more after each answer; silence ends it */
+  speak(a.say, () => { if (a.follow !== false && !document.hidden) listen({ auto: true }); });
 }
 $("word").addEventListener("click", listen);
 
