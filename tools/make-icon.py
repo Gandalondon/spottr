@@ -1,6 +1,6 @@
-# Relay icon: five bars (0.42/0.7/1/0.7/0.42), purple steps from the edges (#4D4794) to the centre (#B0A9EC), on charcoal. Same as the site logo.
+# Relay icon: five bars (0.42/0.7/1/0.7/0.42), yellow (#F2B33D) on charcoal. Same as the site logo.
 from PIL import Image, ImageDraw
-COLS=[(77,71,148,255),(122,114,196,255),(176,169,236,255),(122,114,196,255),(77,71,148,255)]; NAVY=(28,30,34,255); REST=[.42,.7,1,.7,.42]
+COLS=[(242,179,61,255)]*5; NAVY=(28,30,34,255); REST=[.42,.7,1,.7,.42]
 def bars(size, group_w, bg=None, shape=None):
     S=size*4; im=Image.new("RGBA",(S,S),(0,0,0,0)); d=ImageDraw.Draw(im)
     if bg:
