@@ -53,16 +53,16 @@ body.listening .close{color:var(--ink)}
 body.listening .small{color:var(--ink);opacity:.72}
 .ctx{display:flex;flex-direction:column;gap:16px}
 .warn{color:var(--red)}
-.mapwrap{position:relative;width:100%;height:min(52vh,460px);min-height:280px;background:var(--panel)}
+.mapwrap{position:relative;width:100%;height:min(52vh,460px);min-height:280px;background:var(--panel);border-radius:16px;overflow:hidden}
 .map{position:absolute;inset:0;background:var(--panel)}
 .mapctl{position:absolute;right:8px;top:8px;z-index:500;display:flex;flex-direction:column;gap:8px}
-.mapctl button{all:unset;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(15,18,24,.88);color:var(--bone);font-family:"Material Symbols Outlined";font-size:24px;cursor:pointer}
+.mapctl button{all:unset;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(15,18,24,.88);color:var(--bone);font-family:"Material Symbols Outlined";font-size:24px;cursor:pointer}
 .mapctl button:focus-visible{outline:2px solid var(--amber)}
-.mapnote{position:absolute;left:8px;bottom:8px;z-index:500;background:rgba(15,18,24,.88);padding:4px 8px;font-size:14px;line-height:20px;color:var(--bone)}
+.mapnote{position:absolute;left:8px;bottom:8px;z-index:500;background:rgba(15,18,24,.88);padding:4px 8px;border-radius:8px;font-size:14px;line-height:20px;color:var(--bone)}
 .leaflet-container{background:var(--panel);font-family:var(--body)}
 .leaflet-control-attribution{background:rgba(15,18,24,.75)!important;color:var(--grey)!important;font-size:11px}
 .leaflet-control-attribution a{color:var(--bone)!important}
-.lbl{background:var(--navy)!important;color:var(--amber)!important;border:0!important;border-radius:0!important;box-shadow:none!important;font:600 15px/20px var(--body)!important;padding:4px 8px!important}
+.lbl{background:var(--navy)!important;color:var(--amber)!important;border:0!important;border-radius:8px!important;box-shadow:none!important;font:600 15px/20px var(--body)!important;padding:4px 8px!important}
 .lbl:before{display:none}
 .lbl.you{color:var(--bone)!important}
 .greet{font-family:var(--display);font-weight:800;font-size:min(56px,13vw);line-height:1.05;letter-spacing:.005em;margin:0;text-wrap:balance}
