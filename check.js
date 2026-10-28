@@ -324,6 +324,19 @@ async function listen() {
 function stopListening() { try { if (CAP && CAP.SpeechRecognition) CAP.SpeechRecognition.stop(); else if (webRec) webRec.stop(); } catch (e) {} }
 
 /* =================== rendering =================== */
+/* the big top word: same place and style on every screen; shrinks only when a line is too wide */
+function setWord(txt) {
+  const w = document.getElementById("word");
+  w.hidden = false; w.textContent = txt; w.style.fontSize = ""; w.style.lineHeight = "";
+  requestAnimationFrame(() => {
+    const avail = w.parentElement.clientWidth - (document.getElementById("close").hidden ? 0 : 64);
+    w.style.whiteSpace = "pre";
+    const need = w.scrollWidth;
+    w.style.whiteSpace = "";
+    if (need > avail && avail > 0) { const size = Math.max(32, Math.floor(72 * avail / need)); w.style.fontSize = size + "px"; w.style.lineHeight = size + "px"; }
+  });
+}
+window.addEventListener("resize", () => setWord(document.getElementById("word").textContent));
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let lmap = null;
@@ -332,10 +345,10 @@ function clearMap() { if (lmap) { lmap.remove(); lmap = null; } }
 function renderReady() {
   clearMap();
   document.body.classList.remove("listening"); $("close").hidden = true;
-  $("word").hidden = true;
   const hr = new Date().getHours();
-  const part = hr < 5 ? "Evening" : hr < 12 ? "Morning" : hr < 18 ? "Afternoon" : "Evening";
-  const rows = ['<div><h1 class="greet">' + part + ', Raider.</h1><p class="big">What do you need help with?</p></div>'];
+  const part = hr < 5 ? "EVENING" : hr < 12 ? "MORNING" : hr < 18 ? "AFTERNOON" : "EVENING";
+  setWord(part + ",\nRAIDER.");
+  const rows = ['<p class="big">What do you need help with?</p>'];
   const cq = QUESTS.find(q => q.n === S.quest);
   if (cq) { const i = Math.min(S.step || 0, cq.steps.length - 1); rows.push('<div><p class="big strong">' + esc(cq.n) + '</p><p class="small">Step ' + (i + 1) + " of " + cq.steps.length + ": " + esc(cq.steps[i].t) + "</p></div>"); }
   if (S.place) { const ago = Math.round(placeAge()); rows.push('<div><p class="big strong">Blue Gate</p><p class="small">At ' + esc(S.place.n) + (ago ? ", " + ago + (ago === 1 ? " minute" : " minutes") + " ago" : ", just now") + "</p></div>"); }
@@ -347,16 +360,16 @@ function renderReady() {
 function renderListening(partial) {
   clearMap(); setVoiceState("listening");
   document.body.classList.add("listening");
-  $("word").hidden = false; $("word").textContent = "GO\nAHEAD";
+  setWord("GO\nAHEAD");
   $("stage").innerHTML = '<p class="big">' + esc(partial || "Listening…") + "</p>";
 }
 function renderBack() { setVoiceState("idle"); document.body.classList.remove("listening"); if (S.last) renderAnswer(S.last.q, S.last.a); else renderReady(); }
-function showError(msg) { setVoiceState("idle"); document.body.classList.remove("listening"); $("close").hidden = false; clearMap(); $("word").hidden = false; $("word").textContent = "SAY AGAIN"; $("stage").innerHTML = '<p class="big">' + esc(msg) + "</p>"; }
+function showError(msg) { setVoiceState("idle"); document.body.classList.remove("listening"); $("close").hidden = false; clearMap(); setWord("SAY\nAGAIN"); $("stage").innerHTML = '<p class="big">' + esc(msg) + "</p>"; }
 
 function renderAnswer(q, a) {
   clearMap();
   document.body.classList.remove("listening"); $("close").hidden = false;
-  $("word").hidden = false; $("word").textContent = a.word;
+  setWord(a.word);
   let html = "";
   const hasMap = a.map && (a.map.stars.length || a.map.you);
   if (hasMap) html += '<div class="mapwrap"><div class="map" id="map" role="img" aria-label="' + esc(mapLabel(a.map)) + '"></div><div class="mapctl"><button type="button" id="zin" aria-label="Zoom in">add</button><button type="button" id="zout" aria-label="Zoom out">remove</button><button type="button" id="recentre" aria-label="Recentre">my_location</button><button type="button" id="full" aria-label="Whole map">zoom_out_map</button></div><div class="mapnote" id="mapnote" hidden></div></div>';
@@ -409,7 +422,7 @@ function handle(q) {
 $("word").addEventListener("click", listen);
 
 /* on the greeting screen, tapping anywhere talks */
-$("stage").addEventListener("click", () => { if ($("word").hidden) listen(); });
+$("stage").addEventListener("click", () => { if ($("close").hidden && !listening) listen(); });
 $("mic").addEventListener("click", listen);
 $("close").addEventListener("click", () => { stopSpeaking(); S = Object.assign({}, EMPTY); save(); renderReady(); });
 
