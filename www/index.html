@@ -51,11 +51,9 @@ body.listening .small{color:var(--ink);opacity:.72}
 .greet + .big{margin-top:16px}
 .dock{position:sticky;bottom:0;display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 0 calc(24px + env(safe-area-inset-bottom,0px));background:var(--navy)}
 body.listening .dock{background:var(--amber)}
-.micbtn{all:unset;cursor:pointer;width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--amber);color:var(--ink);font-family:"Material Symbols Outlined";font-size:44px;transition:transform .15s}
+.micbtn{all:unset;cursor:pointer;width:96px;height:96px;display:flex;align-items:center;justify-content:center;color:var(--amber);font-family:"Material Symbols Outlined";font-size:64px}
 .micbtn:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
-body.listening .micbtn{background:var(--ink);color:var(--amber)}
-body.speaking .micbtn{background:var(--panel);color:var(--amber)}
-body.small-mic .micbtn{width:56px;height:56px;font-size:28px}
+body.listening .micbtn{color:var(--ink)}
 .voicestate{font-size:16px;line-height:24px;color:var(--grey)}
 body.listening .voicestate{color:var(--ink)}
 .dockrow{display:flex;align-items:center;justify-content:space-between;width:100%}
@@ -91,7 +89,7 @@ body.listening .ask button{background:var(--ink);color:var(--amber)}
     <div class="dockrow">
       <button class="iconbtn" id="kbd" type="button" aria-label="Type instead">keyboard</button>
       <button class="micbtn" id="mic" type="button" aria-label="Talk">mic</button>
-      <button class="iconbtn" id="micsize" type="button" aria-label="Switch mic button size">unfold_less</button>
+      <span style="width:48px" aria-hidden="true"></span>
     </div>
     <div class="voicestate" id="vstate" aria-live="polite">Tap to talk</div>
   </div>
@@ -504,9 +502,8 @@ function handle(q) {
 }
 $("word").addEventListener("click", listen);
 $("kbd").addEventListener("click", () => { const f = $("ask"); f.hidden = !f.hidden; if (!f.hidden) $("q").focus(); });
-function applyMicSize() { let small = false; try { small = localStorage.getItem("spottr-mic") === "small"; } catch (e) {} document.body.classList.toggle("small-mic", small); $("micsize").textContent = small ? "unfold_more" : "unfold_less"; $("micsize").setAttribute("aria-label", small ? "Bigger mic button" : "Smaller mic button"); }
-$("micsize").addEventListener("click", () => { try { localStorage.setItem("spottr-mic", document.body.classList.contains("small-mic") ? "big" : "small"); } catch (e) {} applyMicSize(); });
-applyMicSize();
+/* on the greeting screen, tapping anywhere talks */
+$("stage").addEventListener("click", () => { if ($("word").hidden) listen(); });
 $("mic").addEventListener("click", listen);
 $("close").addEventListener("click", () => { stopSpeaking(); S = Object.assign({}, EMPTY); save(); renderReady(); });
 $("ask").addEventListener("submit", e => { e.preventDefault(); const v = $("q").value; $("q").value = ""; $("q").blur(); $("ask").hidden = true; handle(v); });

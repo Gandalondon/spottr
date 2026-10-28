@@ -403,9 +403,8 @@ function handle(q) {
 }
 $("word").addEventListener("click", listen);
 $("kbd").addEventListener("click", () => { const f = $("ask"); f.hidden = !f.hidden; if (!f.hidden) $("q").focus(); });
-function applyMicSize() { let small = false; try { small = localStorage.getItem("spottr-mic") === "small"; } catch (e) {} document.body.classList.toggle("small-mic", small); $("micsize").textContent = small ? "unfold_more" : "unfold_less"; $("micsize").setAttribute("aria-label", small ? "Bigger mic button" : "Smaller mic button"); }
-$("micsize").addEventListener("click", () => { try { localStorage.setItem("spottr-mic", document.body.classList.contains("small-mic") ? "big" : "small"); } catch (e) {} applyMicSize(); });
-applyMicSize();
+/* on the greeting screen, tapping anywhere talks */
+$("stage").addEventListener("click", () => { if ($("word").hidden) listen(); });
 $("mic").addEventListener("click", listen);
 $("close").addEventListener("click", () => { stopSpeaking(); S = Object.assign({}, EMPTY); save(); renderReady(); });
 $("ask").addEventListener("submit", e => { e.preventDefault(); const v = $("q").value; $("q").value = ""; $("q").blur(); $("ask").hidden = true; handle(v); });
