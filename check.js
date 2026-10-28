@@ -290,7 +290,7 @@ async function listen() {
   if (listening) { stopListening(); return; }
   if (document.body.classList.contains("speaking")) { stopSpeaking(); return; }
   stopSpeaking();
-  if (!navigator.onLine) { showError("No connection. Speech recognition needs one on most phones. Type your question below."); return; }
+  if (!navigator.onLine) { showError("No connection. Speech recognition needs one on most phones. Check your Wi-Fi and tap again."); return; }
   if (CAP && CAP.SpeechRecognition) {
     try {
       const p = await CAP.SpeechRecognition.requestPermissions();
@@ -303,14 +303,14 @@ async function listen() {
     } catch (e) { listening = false; renderBack(); showError("I didn't catch that. Tap and try again."); }
     return;
   }
-  if (!WebRec) { $("q").focus(); showError("Voice isn't available in this browser. Use your keyboard's mic or type."); return; }
+  if (!WebRec) { showError("Voice isn't available here. Open Spottr on your phone."); return; }
   webRec = new WebRec(); webRec.lang = "en-GB"; webRec.interimResults = true; webRec.maxAlternatives = 1;
   let finalText = "";
   listening = true; renderListening();
   webRec.onresult = e => { let interim = ""; for (const r of e.results) { if (r.isFinal) finalText = r[0].transcript; else interim += r[0].transcript; } renderListening(finalText || interim); };
   webRec.onerror = e => {
     listening = false; renderBack();
-    const msg = e.error === "not-allowed" || e.error === "service-not-allowed" ? "Spottr needs the microphone. Allow it for this site in Chrome's settings." : e.error === "network" ? "Speech needs a connection. Type instead." : e.error === "no-speech" ? "I didn't hear anything. Tap and try again." : "I didn't catch that. Tap and try again.";
+    const msg = e.error === "not-allowed" || e.error === "service-not-allowed" ? "Spottr needs the microphone. Allow it for this site in Chrome's settings." : e.error === "network" ? "Speech needs a connection. Check your Wi-Fi and tap again." : e.error === "no-speech" ? "I didn't hear anything. Tap and try again." : "I didn't catch that. Tap and try again.";
     showError(msg);
   };
   webRec.onend = () => { const was = listening; listening = false; if (finalText) handle(finalText); else if (was) renderBack(); };
@@ -402,12 +402,12 @@ function handle(q) {
   speak(a.say);
 }
 $("word").addEventListener("click", listen);
-$("kbd").addEventListener("click", () => { const f = $("ask"); f.hidden = !f.hidden; if (!f.hidden) $("q").focus(); });
+
 /* on the greeting screen, tapping anywhere talks */
 $("stage").addEventListener("click", () => { if ($("word").hidden) listen(); });
 $("mic").addEventListener("click", listen);
 $("close").addEventListener("click", () => { stopSpeaking(); S = Object.assign({}, EMPTY); save(); renderReady(); });
-$("ask").addEventListener("submit", e => { e.preventDefault(); const v = $("q").value; $("q").value = ""; $("q").blur(); $("ask").hidden = true; handle(v); });
+
 
 
 if (S.last) renderAnswer(S.last.q, S.last.a); else renderReady();
