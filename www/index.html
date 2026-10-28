@@ -135,14 +135,14 @@ const QUESTS = [
   { n: "Home to Roost", al: ["home to roost", "roost"], who: "Shani",
     note: "Steps placed by MetaForge. Route in our own words from Destructoid and All Things How. It's underground, so the star marks the spot above you.",
     steps: [
-      { t: "Reach the back of the Blue Gate tunnels", go: "Head into the traffic tunnels and keep left, past the burnt-out vehicles, to the back wall.", pin: HTR(1), al: ["back of the tunnel", "tunnel entrance", "the tunnels"] },
-      { t: "Scan an Android at the back of the Traffic Tunnels", go: "At the back wall, the Android stands behind a booth. Get close to scan it.", pin: HTR(2), al: ["android", "scan"] },
-      { t: "Head to the MANTIKOR locker room", go: "From the Android, take the route on your right to a short staircase and a door into the Security Wing. Go up the second short flight. The locker room door is immediately on your right. You may need to breach it.", pin: HTR(3), al: ["mantikor", "locker room"] },
-      { t: "Search the locker room for clues", go: "Interact with the mural on the back wall of the locker room.", pin: HTR(4), al: ["clue", "mural"] },
-      { t: "Read the final vehicle weighing logs", go: "Go back down the stairs to the platform over the underground garage. The weighing station is among the parked vehicles, panel on its right side.", pin: HTR(5), al: ["weighing", "logs", "weigh"] },
-      { t: "Optional: find the hidden key", go: "Behind the concrete barrier next to the weighing terminal. It opens the Confiscation Room, so grab it if you haven't got one.", pin: HTR(6), al: ["hidden key", "the key", "spare key"] },
-      { t: "Enter the Confiscation Room", go: "Back up on the Security Wing platform, with the stairs on your right. The door is locked and needs the Confiscation Room key.", pin: HTR(7), al: ["confiscation"] },
-      { t: "Send MANTIKOR's last security recordings to Shani", go: "Inside the Confiscation Room, the white box is on top of the central server rack. Climb the rack or the crates beside it.", pin: HTR(8), al: ["recording", "white box", "server rack"] }
+      { t: "Reach the back of the Blue Gate tunnels", go: "Head into the traffic tunnels and keep left, past the burnt-out vehicles, to the back wall.", sh: "Back of the tunnels. Into the traffic tunnels, keep left to the back wall.", pin: HTR(1), al: ["back of the tunnel", "tunnel entrance", "the tunnels"] },
+      { t: "Scan an Android at the back of the Traffic Tunnels", go: "At the back wall, the Android stands behind a booth. Get close to scan it.", sh: "Scan the Android. It's behind the booth at the back wall. Get close to scan.", pin: HTR(2), al: ["android", "scan"] },
+      { t: "Head to the MANTIKOR locker room", go: "From the Android, take the route on your right to a short staircase and a door into the Security Wing. Go up the second short flight. The locker room door is immediately on your right. You may need to breach it.", sh: "Locker room. From the Android, go right, up two short flights. Door on your right.", pin: HTR(3), al: ["mantikor", "locker room"] },
+      { t: "Search the locker room for clues", go: "Interact with the mural on the back wall of the locker room.", sh: "Clues. Check the mural on the back wall.", pin: HTR(4), al: ["clue", "mural"] },
+      { t: "Read the final vehicle weighing logs", go: "Go back down the stairs to the platform over the underground garage. The weighing station is among the parked vehicles, panel on its right side.", sh: "Weighing logs. Back down the stairs to the garage platform. Panel on the weighing station's right.", pin: HTR(5), al: ["weighing", "logs", "weigh"] },
+      { t: "Optional: find the hidden key", go: "Behind the concrete barrier next to the weighing terminal. It opens the Confiscation Room, so grab it if you haven't got one.", sh: "Hidden key. Behind the concrete barrier by the weighing terminal.", pin: HTR(6), al: ["hidden key", "the key", "spare key"] },
+      { t: "Enter the Confiscation Room", go: "Back up on the Security Wing platform, with the stairs on your right. The door is locked and needs the Confiscation Room key.", sh: "Confiscation Room. Back up to the Security Wing platform. Locked door, needs the key.", pin: HTR(7), al: ["confiscation"] },
+      { t: "Send MANTIKOR's last security recordings to Shani", go: "Inside the Confiscation Room, the white box is on top of the central server rack. Climb the rack or the crates beside it.", sh: "Send the recordings. White box on top of the central server rack. Climb up.", pin: HTR(8), al: ["recording", "white box", "server rack"] }
     ] },
   { n: "Nothing Ventured", al: ["nothing ventured"], who: "Apollo", note: "Spawn points: MetaForge.",
     steps: [
@@ -264,7 +264,9 @@ function stepAnswer(q, i, prefix) {
   if (!go) go = st.pin ? "It's marked on the map." : "I don't have a verified location for this step yet.";
   const last = i === q.steps.length - 1;
   const tail = last ? (q.who ? " That's the last step. Then hand it in to " + q.who + "." : " That's the last step.") : " Say done when you've finished.";
-  return { word: "STEP\n" + (i + 1), say: (prefix || "") + "Step " + (i + 1) + ". " + st.t + ". " + go, text: (prefix || "") + "Step " + (i + 1) + " of " + q.steps.length + ": " + st.t + ". " + go + tail, map, note: map ? q.note : "" };
+  const firstSentence = s => (s.match(/^[^.!?]*[.!?]/) || [s])[0];
+  const short = st.sh || firstSentence(go);
+  return { word: "STEP\n" + (i + 1), full: (prefix || "") + "Step " + (i + 1) + ". " + st.t + ". " + go, say: (prefix || "") + "Step " + (i + 1) + ". " + short, text: (prefix || "") + "Step " + (i + 1) + " of " + q.steps.length + ": " + st.t + ". " + go + tail, map, note: map ? q.note : "" };
 }
 function stepIntent(t) {
   const named = findQuest(t);
@@ -281,7 +283,7 @@ function stepIntent(t) {
     return stepAnswer(cur, i);
   }
   if (has(t, ["previous", "go back a step", "step back"])) return stepAnswer(cur, (S.step || 0) - 1);
-  if (named || hit >= 0 || has(t, ["where is it", "where do i go", "this step", "how do i get there", "repeat", "say that again", "what step", "where am i up to"])) return stepAnswer(cur, S.step || 0);
+  if (named || hit >= 0 || has(t, ["where is it", "where do i go", "this step", "how do i get there", "what step", "where am i up to"])) return stepAnswer(cur, S.step || 0);
   return null;
 }
 
@@ -291,6 +293,9 @@ function answer(raw, opts) {
   const terse = inRaid();
   const ps = opts.general ? "general" : posState();
 
+  if (S.last && S.last.a && has(t, ["more detail", "more details", "tell me more", "say again", "say that again", "repeat", "not sure", "didn't catch", "didnt catch", " what ", "pardon", "explain"]) && t.trim().split(" ").length <= 6) {
+    const a = Object.assign({}, S.last.a); a.say = a.full || a.text; return a;
+  }
   if (has(t, [" new raid", "just spawned", " spawned"])) { S.place = null; S.pending = null; S.minutesLeft = null; S.raidAt = Date.now(); save(); return { word: "READY", say: "New raid. Good luck.", text: "New raid. I'll ask where you are when an answer needs it." }; }
   if (has(t, [" i died", " died ", " dead "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { word: "NOTED", say: "Unlucky. Your quest is still here.", text: "Raid cleared. Your quest and step are still here." }; }
   if (has(t, ["extracted", " made it out", " got out "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { word: "NOTED", say: "Nice. Raid cleared.", text: "Raid cleared." }; }
