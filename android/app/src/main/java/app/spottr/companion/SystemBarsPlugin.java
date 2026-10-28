@@ -15,7 +15,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class SystemBarsPlugin extends Plugin {
     @PluginMethod
     public void set(PluginCall call) {
-        final String color = call.getString("color", "#0F1218");
+        final String color = call.getString("color", "#1C1E22");
         final boolean light = Boolean.TRUE.equals(call.getBoolean("light", false));
         getActivity().runOnUiThread(() -> {
             try { apply(getActivity().getWindow(), Color.parseColor(color), light); } catch (Exception ignored) {}

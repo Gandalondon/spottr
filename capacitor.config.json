@@ -2,5 +2,5 @@
   "appId": "app.spottr.companion",
   "appName": "Spottr",
   "webDir": "www",
-  "android": { "backgroundColor": "#0F1218" }
+  "android": { "backgroundColor": "#1C1E22" }
 }

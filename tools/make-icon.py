@@ -1,6 +1,6 @@
 # Spottr icon: five-bar soundwave (rest shape 0.42/0.7/1/0.7/0.42), amber on navy. Same shape as the site header.
 from PIL import Image, ImageDraw
-AMBER=(242,179,61,255); NAVY=(15,18,24,255); REST=[.42,.7,1,.7,.42]
+AMBER=(242,179,61,255); NAVY=(28,30,34,255); REST=[.42,.7,1,.7,.42]
 def bars(size, group_w, bg=None, shape=None):
     S=size*4; im=Image.new("RGBA",(S,S),(0,0,0,0)); d=ImageDraw.Draw(im)
     if bg:
