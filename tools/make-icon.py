@@ -1,6 +1,6 @@
-# Spottr icon: five-bar soundwave (rest shape 0.42/0.7/1/0.7/0.42), amber on navy. Same shape as the site header.
+# Relay icon: five bars (0.42/0.7/1/0.7/0.42), purple steps from the edges (#4D4794) to the centre (#B0A9EC), on charcoal. Same as the site logo.
 from PIL import Image, ImageDraw
-AMBER=(242,179,61,255); NAVY=(28,30,34,255); REST=[.42,.7,1,.7,.42]
+COLS=[(77,71,148,255),(122,114,196,255),(176,169,236,255),(122,114,196,255),(77,71,148,255)]; NAVY=(28,30,34,255); REST=[.42,.7,1,.7,.42]
 def bars(size, group_w, bg=None, shape=None):
     S=size*4; im=Image.new("RGBA",(S,S),(0,0,0,0)); d=ImageDraw.Draw(im)
     if bg:
@@ -8,7 +8,7 @@ def bars(size, group_w, bg=None, shape=None):
         else: d.rectangle([0,0,S,S],fill=bg)
     gw=group_w*S; unit=gw/28.0; bw=4*unit; H=26*unit; x=(S-gw)/2
     for i,h in enumerate(REST):
-        bh=H*h; y=(S-bh)/2; d.rounded_rectangle([x,y,x+bw,y+bh],radius=bw/2,fill=AMBER); x+=6*unit
+        bh=H*h; y=(S-bh)/2; d.rounded_rectangle([x,y,x+bw,y+bh],radius=bw/2,fill=COLS[i]); x+=6*unit
     return im.resize((size,size),Image.LANCZOS)
 dens={"mdpi":1,"hdpi":1.5,"xhdpi":2,"xxhdpi":3,"xxxhdpi":4}
 R="android/app/src/main/res/mipmap-"
