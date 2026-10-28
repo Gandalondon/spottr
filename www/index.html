@@ -472,7 +472,7 @@ function renderListening(partial) {
   clearMap(); setVoiceState("listening");
   document.body.classList.add("listening");
   setWord("Go\nahead.");
-  $("stage").innerHTML = '<p class="big">' + esc(partial || "Listening…") + "</p>";
+  $("stage").innerHTML = "";
 }
 function renderBack() { setVoiceState("idle"); document.body.classList.remove("listening"); if (S.last) renderAnswer(S.last.q, S.last.a); else renderReady(); }
 function showError(msg) { setVoiceState("idle"); document.body.classList.remove("listening"); document.body.classList.add("session"); $("close").hidden = false; clearMap(); setWord(msg, true); $("stage").innerHTML = ""; }
