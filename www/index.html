@@ -25,15 +25,26 @@ body.listening{background:var(--amber);color:var(--ink)}
 .app{min-height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding:calc(24px + env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) 0 max(24px,env(safe-area-inset-left,0px))}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .top .word{flex:1 1 auto}
-.word.instr{font-size:40px;line-height:44px;letter-spacing:0;font-stretch:112%;white-space:normal}
-@media (max-width:380px){.word.instr{font-size:34px;line-height:38px}}
-.ctxline{font-size:16px;line-height:24px;color:var(--grey);margin:0}
+/* instruction type: the biggest step on the scale that fits in 4 lines and 216px tall, about a quarter of the screen (72 > 64 > 56 > 48 > 40 > 36 > 32). Set in fitInstr(). */
+.word.instr{letter-spacing:0;font-stretch:112%;white-space:normal;overflow-wrap:break-word}
+.ctxline{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:24px;font-size:16px;line-height:24px;color:var(--grey);margin:0}
 body.session .stage{justify-content:flex-start}
-body.session .micbtn{width:64px;height:64px;font-size:40px}
+body.listening .stage{justify-content:flex-end}
+/* soundwave: five bars, same shape as the icon. Only shows while Spottr is hearing you. */
+.wave{display:flex;align-items:center;gap:10px;height:96px;color:var(--ink)}
+.wave i{display:block;width:14px;height:100%;background:currentColor;transform:scaleY(.3);animation:wv 1.1s ease-in-out infinite}
+.wave i:nth-child(1),.wave i:nth-child(5){animation-delay:-.4s;height:45%}
+.wave i:nth-child(2),.wave i:nth-child(4){animation-delay:-.2s;height:75%}
+@keyframes wv{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+.wave.sm{height:24px;gap:3px;color:var(--amber);visibility:hidden}
+.wave.sm i{width:4px}
+body.follow .wave.sm{visibility:visible}
+@media (prefers-reduced-motion:reduce){.wave i{animation:none;transform:none}}
 .word{all:unset;display:block;min-width:0;max-width:100%;cursor:pointer;font-family:var(--display);font-stretch:125%;font-weight:800;font-size:72px;line-height:72px;letter-spacing:.01em;white-space:pre-line;text-wrap:balance}
 .word:focus-visible{outline:3px solid var(--amber);outline-offset:4px}
 .close{all:unset;flex:none;width:48px;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--grey);font-family:"Material Symbols Outlined";font-size:32px;line-height:1}
 body.listening .close{color:var(--ink)}
+.close[hidden],.word[hidden]{display:none}
 .stage{flex:1 1 auto;display:flex;flex-direction:column;justify-content:flex-end;gap:24px;min-width:0}
 .big{font-size:24px;line-height:32px;font-weight:500;margin:0;text-wrap:pretty}
 .word{text-wrap:balance}
@@ -56,26 +67,7 @@ body.listening .small{color:var(--ink);opacity:.72}
 .lbl.you{color:var(--bone)!important}
 .greet{font-family:var(--display);font-weight:800;font-size:min(56px,13vw);line-height:1.05;letter-spacing:.005em;margin:0;text-wrap:balance}
 .greet + .big{margin-top:16px}
-.dock{position:sticky;bottom:0;display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 0 calc(24px + env(safe-area-inset-bottom,0px));background:var(--navy)}
-body.listening .dock{background:var(--amber)}
-.micbtn{all:unset;cursor:pointer;width:96px;height:96px;display:flex;align-items:center;justify-content:center;color:var(--amber);font-family:"Material Symbols Outlined";font-size:64px}
-.micbtn:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
-body.listening .micbtn{color:var(--ink)}
-.voicestate{font-size:16px;line-height:24px;color:var(--grey)}
-body.listening .voicestate{color:var(--ink)}
-.dockrow{display:flex;align-items:center;justify-content:space-between;width:100%}
-.iconbtn{all:unset;cursor:pointer;width:48px;height:48px;display:flex;align-items:center;justify-content:center;color:var(--grey);font-family:"Material Symbols Outlined";font-size:24px}
-body.listening .iconbtn{color:var(--ink)}
-.iconbtn:focus-visible{outline:2px solid var(--amber)}
-.ask{display:flex;gap:8px;width:100%}
-.ask[hidden]{display:none}
-body.listening .ask{background:var(--amber)}
-.ask input{flex:1 1 auto;min-width:0;height:56px;padding:0 16px;border:0;border-radius:0;background:var(--panel);color:var(--bone);font:500 18px/24px var(--body)}
-.ask input::placeholder{color:var(--grey)}
-.ask button{flex:none;height:56px;min-width:56px;padding:0 16px;border:0;border-radius:0;background:var(--amber);color:var(--ink);font:800 16px/1 var(--display);font-stretch:125%;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;gap:8px}
-.ask .ms{font-family:"Material Symbols Outlined";font-size:24px;font-weight:400;letter-spacing:0}
-body.listening .ask input{background:var(--ink);color:var(--bone)}
-body.listening .ask button{background:var(--ink);color:var(--amber)}
+.app{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion:reduce){body{transition:none}}
 </style>
@@ -87,14 +79,7 @@ body.listening .ask button{background:var(--ink);color:var(--amber)}
     <button class="close" id="close" type="button" aria-label="Close and start again" hidden>close</button>
   </div>
   <div class="stage" id="stage"></div>
-  <div class="dock">
-    <div class="dockrow">
-      <span style="width:48px" aria-hidden="true"></span>
-      <button class="micbtn" id="mic" type="button" aria-label="Talk">mic</button>
-      <span style="width:48px" aria-hidden="true"></span>
-    </div>
-    <div class="voicestate" id="vstate" aria-live="polite">Tap to talk</div>
-  </div>
+  <div class="sr" id="vstate" aria-live="polite"></div>
 </div>
 
 <script src="leaflet.js"></script>
@@ -142,14 +127,14 @@ const QUESTS = [
   { n: "Home to Roost", al: ["home to roost", "roost"], who: "Shani",
     note: "Steps placed by MetaForge. Route in our own words from Destructoid and All Things How. It's underground, so the star marks the spot above you.",
     steps: [
-      { t: "Reach the back of the Blue Gate tunnels", go: "Head into the traffic tunnels and keep left, past the burnt-out vehicles, to the back wall.", show: "Into the tunnels. Keep left to the back wall.", pin: HTR(1), al: ["back of the tunnel", "tunnel entrance", "the tunnels"] },
-      { t: "Scan an Android at the back of the Traffic Tunnels", go: "At the back wall, the Android stands behind a booth. Get close to scan it.", show: "Android behind the booth. Get close to scan.", pin: HTR(2), al: ["android", "scan"] },
-      { t: "Head to the MANTIKOR locker room", go: "From the Android, take the route on your right to a short staircase and a door into the Security Wing. Go up the second short flight. The locker room door is immediately on your right. You may need to breach it.", show: "Right from the Android. Up two flights. Door on your right.", pin: HTR(3), al: ["mantikor", "locker room"] },
+      { t: "Reach the back of the Blue Gate tunnels", go: "Head into the traffic tunnels and keep left, past the burnt-out vehicles, to the back wall.", show: "Tunnels. Keep left to the back wall.", pin: HTR(1), al: ["back of the tunnel", "tunnel entrance", "the tunnels"] },
+      { t: "Scan an Android at the back of the Traffic Tunnels", go: "At the back wall, the Android stands behind a booth. Get close to scan it.", show: "Android behind the booth. Scan it.", pin: HTR(2), al: ["android", "scan"] },
+      { t: "Head to the MANTIKOR locker room", go: "From the Android, take the route on your right to a short staircase and a door into the Security Wing. Go up the second short flight. The locker room door is immediately on your right. You may need to breach it.", show: "Right, up two flights. Door on your right.", pin: HTR(3), al: ["mantikor", "locker room"] },
       { t: "Search the locker room for clues", go: "Interact with the mural on the back wall of the locker room.", show: "Mural on the back wall.", pin: HTR(4), al: ["clue", "mural"] },
-      { t: "Read the final vehicle weighing logs", go: "Go back down the stairs to the platform over the underground garage. The weighing station is among the parked vehicles, panel on its right side.", show: "Down to the garage platform. Panel on the weighing station's right.", pin: HTR(5), al: ["weighing", "logs", "weigh"] },
-      { t: "Optional: find the hidden key", go: "Behind the concrete barrier next to the weighing terminal. It opens the Confiscation Room, so grab it if you haven't got one.", show: "Behind the barrier by the weighing terminal.", pin: HTR(6), al: ["hidden key", "the key", "spare key"] },
-      { t: "Enter the Confiscation Room", go: "Back up on the Security Wing platform, with the stairs on your right. The door is locked and needs the Confiscation Room key.", show: "Up to the Security Wing platform. Locked door, use the key.", pin: HTR(7), al: ["confiscation"] },
-      { t: "Send MANTIKOR's last security recordings to Shani", go: "Inside the Confiscation Room, the white box is on top of the central server rack. Climb the rack or the crates beside it.", show: "White box on top of the server rack. Climb up.", pin: HTR(8), al: ["recording", "white box", "server rack"] }
+      { t: "Read the final vehicle weighing logs", go: "Go back down the stairs to the platform over the underground garage. The weighing station is among the parked vehicles, panel on its right side.", show: "Down to the garage. Weighing station panel.", pin: HTR(5), al: ["weighing", "logs", "weigh"] },
+      { t: "Optional: find the hidden key", go: "Behind the concrete barrier next to the weighing terminal. It opens the Confiscation Room, so grab it if you haven't got one.", show: "Behind the barrier by the terminal.", pin: HTR(6), al: ["hidden key", "the key", "spare key"] },
+      { t: "Enter the Confiscation Room", go: "Back up on the Security Wing platform, with the stairs on your right. The door is locked and needs the Confiscation Room key.", show: "Back up to Security Wing. Use the key.", pin: HTR(7), al: ["confiscation"] },
+      { t: "Send MANTIKOR's last security recordings to Shani", go: "Inside the Confiscation Room, the white box is on top of the central server rack. Climb the rack or the crates beside it.", show: "White box on the server rack. Climb up.", pin: HTR(8), al: ["recording", "white box", "server rack"] }
     ] },
   { n: "Nothing Ventured", al: ["nothing ventured"], who: "Apollo", note: "Spawn points: MetaForge.",
     steps: [
@@ -394,13 +379,13 @@ function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (CAP && CAP
 let listening = false, webRec = null;
 function setVoiceState(s) {
   document.body.classList.toggle("speaking", s === "speaking");
-  const label = { idle: "Tap to talk", listening: "Listening\u2026 tap to stop", speaking: "Speaking\u2026 tap to interrupt" }[s] || "Tap to talk";
-  const el = document.getElementById("vstate"); if (el) el.textContent = label;
-  const m = document.getElementById("mic"); if (m) { m.textContent = s === "listening" ? "graphic_eq" : s === "speaking" ? "volume_up" : "mic"; m.setAttribute("aria-label", label); }
+  const el = document.getElementById("vstate"); if (el) el.textContent = { listening: "Listening", speaking: "Speaking" }[s] || "";
 }
+/* follow-up listening: the answer stays on screen, a small soundwave shows Spottr is hearing you */
+function endFollow() { document.body.classList.remove("follow"); setVoiceState("idle"); }
 async function listen(opts) {
   const auto = !!(opts && opts.auto);
-  if (listening) { stopListening(); return; }
+  if (listening) { if (followMode) { followMode = false; renderListening(); } else stopListening(); return; }
   if (document.body.classList.contains("speaking")) { stopSpeaking(); return; }
   stopSpeaking();
   if (!navigator.onLine) { showError("No connection. Speech recognition needs one on most phones. Check your Wi-Fi and tap again."); return; }
@@ -408,28 +393,30 @@ async function listen(opts) {
     try {
       const p = await CAP.SpeechRecognition.requestPermissions();
       if (p && p.speechRecognition && p.speechRecognition !== "granted") { showError("Spottr needs the microphone to hear you. Allow it in Settings, Apps, Spottr, Permissions."); return; }
-      listening = true; renderListening();
+      listening = true; startListeningUI(auto);
       const r = await CAP.SpeechRecognition.start({ language: "en-GB", maxResults: 1, partialResults: false, popup: false });
       listening = false;
       const text = r && r.matches && r.matches[0];
-      if (text) handle(text); else if (auto) renderBack(); else { renderBack(); showError("Didn't catch that. Tap and try again."); }
-    } catch (e) { listening = false; renderBack(); if (!auto) showError("Didn't catch that. Tap and try again."); }
+      if (text) handle(text); else if (followMode) endFollow(); else { renderBack(); showError("Didn't catch that. Tap and try again."); }
+    } catch (e) { listening = false; if (followMode) endFollow(); else { renderBack(); showError("Didn't catch that. Tap and try again."); } }
     return;
   }
   if (!WebRec) { showError("Voice isn't available here. Open Spottr on your phone."); return; }
   webRec = new WebRec(); webRec.lang = "en-GB"; webRec.interimResults = true; webRec.maxAlternatives = 1;
   let finalText = "";
-  listening = true; renderListening();
-  webRec.onresult = e => { let interim = ""; for (const r of e.results) { if (r.isFinal) finalText = r[0].transcript; else interim += r[0].transcript; } renderListening(finalText || interim); };
+  listening = true; startListeningUI(auto);
+  webRec.onresult = e => { for (const r of e.results) { if (r.isFinal) finalText = r[0].transcript; } };
   webRec.onerror = e => {
-    listening = false; renderBack();
-    if (auto && (e.error === "no-speech" || e.error === "aborted")) return;
+    listening = false;
+    if (followMode) { endFollow(); if (e.error === "no-speech" || e.error === "aborted") return; } else renderBack();
     const msg = e.error === "not-allowed" || e.error === "service-not-allowed" ? "Spottr needs the microphone. Allow it for this site in Chrome's settings." : e.error === "network" ? "Speech needs a connection. Check your Wi-Fi and tap again." : e.error === "no-speech" ? "Didn't hear anything. Tap and try again." : "Didn't catch that. Tap and try again.";
     showError(msg);
   };
-  webRec.onend = () => { const was = listening; listening = false; if (finalText) handle(finalText); else if (was) renderBack(); };
-  try { webRec.start(); } catch (e) { listening = false; renderBack(); }
+  webRec.onend = () => { const was = listening; listening = false; if (finalText) handle(finalText); else if (was) { if (followMode) endFollow(); else renderBack(); } };
+  try { webRec.start(); } catch (e) { listening = false; if (followMode) endFollow(); else renderBack(); }
 }
+let followMode = false;
+function startListeningUI(auto) { followMode = auto; if (auto) { setVoiceState("listening"); document.body.classList.add("follow"); } else renderListening(); }
 function stopListening() { try { if (CAP && CAP.SpeechRecognition) CAP.SpeechRecognition.stop(); else if (webRec) webRec.stop(); } catch (e) {} }
 
 /* =================== rendering =================== */
@@ -438,7 +425,7 @@ function setWord(txt, instr) {
   const w = document.getElementById("word");
   w.hidden = false; w.textContent = txt; w.style.fontSize = ""; w.style.lineHeight = "";
   w.classList.toggle("instr", !!instr);
-  if (instr) return;
+  if (instr) { fitInstr(w); requestAnimationFrame(() => fitInstr(w)); return; }
   requestAnimationFrame(() => {
     const avail = w.parentElement.clientWidth - (document.getElementById("close").hidden ? 0 : 64);
     w.style.whiteSpace = "pre";
@@ -446,6 +433,17 @@ function setWord(txt, instr) {
     w.style.whiteSpace = "";
     if (need > avail && avail > 0) { const size = Math.max(32, Math.floor(72 * avail / need)); w.style.fontSize = size + "px"; w.style.lineHeight = size + "px"; }
   });
+}
+/* type rule: short instructions are huge, longer ones step down. Biggest size on the scale that fits in 4 lines without breaking a word.
+   If it still needs more than 4 lines at 32px, the line is too long: aim for 40 characters, never over 60. */
+const TYPE_SCALE = [72, 64, 56, 48, 40, 36, 32];
+function fitInstr(w) {
+  for (const s of TYPE_SCALE) {
+    const lh = Math.round(s * 1.08);
+    w.style.fontSize = s + "px"; w.style.lineHeight = lh + "px";
+    if (Math.floor(w.scrollHeight / lh) <= 4 && w.scrollHeight <= 216 && w.scrollWidth <= w.clientWidth + 1) return s;
+  }
+  return 32;
 }
 window.addEventListener("resize", () => { const w = document.getElementById("word"); setWord(w.textContent, w.classList.contains("instr")); });
 const $ = id => document.getElementById(id);
@@ -466,22 +464,24 @@ function renderReady() {
   const m = minsNow();
   if (m != null) rows.push('<div><p class="big strong' + (m <= 5 ? " warn" : "") + '">About ' + m + ' minutes left</p><p class="small">From what you told me, not live</p></div>');
 
+  rows.push('<p class="small">Tap anywhere to talk.</p>');
   $("stage").innerHTML = '<div class="ctx">' + rows.join("") + "</div>";
 }
-function renderListening(partial) {
+const WAVE = '<i></i><i></i><i></i><i></i><i></i>';
+function renderListening() {
   clearMap(); setVoiceState("listening");
-  document.body.classList.add("listening");
+  document.body.classList.remove("follow"); document.body.classList.add("listening");
   setWord("Go\nahead.");
-  $("stage").innerHTML = "";
+  $("stage").innerHTML = '<div class="wave" aria-hidden="true">' + WAVE + "</div>";
 }
 function renderBack() { setVoiceState("idle"); document.body.classList.remove("listening"); if (S.last) renderAnswer(S.last.q, S.last.a); else renderReady(); }
-function showError(msg) { setVoiceState("idle"); document.body.classList.remove("listening"); document.body.classList.add("session"); $("close").hidden = false; clearMap(); setWord(msg, true); $("stage").innerHTML = ""; }
+function showError(msg) { setVoiceState("idle"); document.body.classList.remove("listening", "follow"); document.body.classList.add("session"); $("close").hidden = false; clearMap(); setWord(msg, true); $("stage").innerHTML = ""; }
 
 function renderAnswer(q, a) {
   clearMap();
-  document.body.classList.remove("listening"); document.body.classList.add("session"); $("close").hidden = false;
+  document.body.classList.remove("listening", "follow"); document.body.classList.add("session"); $("close").hidden = false;
   setWord(a.show || a.text || "", true);
-  let html = a.ctx ? '<p class="ctxline">' + esc(a.ctx) + "</p>" : "";
+  let html = '<p class="ctxline"><span>' + esc(a.ctx || "") + '</span><span class="wave sm" aria-hidden="true">' + WAVE + "</span></p>";
   const hasMap = a.map && (a.map.stars.length || a.map.you);
   if (hasMap) html += '<div class="mapwrap"><div class="map" id="map" role="img" aria-label="' + esc(mapLabel(a.map)) + '"></div><div class="mapctl"><button type="button" id="zin" aria-label="Zoom in">add</button><button type="button" id="zout" aria-label="Zoom out">remove</button><button type="button" id="recentre" aria-label="Recentre">my_location</button><button type="button" id="full" aria-label="Whole map">zoom_out_map</button></div><div class="mapnote" id="mapnote" hidden></div></div>';
   $("stage").innerHTML = html;
@@ -531,8 +531,8 @@ function handle(q) {
 $("word").addEventListener("click", listen);
 
 /* on the greeting screen, tapping anywhere talks */
-$("stage").addEventListener("click", () => { if ($("close").hidden && !listening) listen(); });
-$("mic").addEventListener("click", listen);
+/* there is no mic button: tap anywhere on the greeting, or on the instruction once you're talking. Tap while listening to stop. */
+$("stage").addEventListener("click", e => { if (listening || $("close").hidden || !e.target.closest(".mapwrap")) listen(); });
 $("close").addEventListener("click", () => { stopSpeaking(); S = Object.assign({}, EMPTY); save(); renderReady(); });
 
 
