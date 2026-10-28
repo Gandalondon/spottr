@@ -1,6 +1,6 @@
 {
   "appId": "app.spottr.companion",
-  "appName": "Spottr",
+  "appName": "Relay",
   "webDir": "www",
   "android": { "backgroundColor": "#1C1E22" }
 }

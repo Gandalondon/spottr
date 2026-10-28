@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#1C1E22">
-<title>Spottr</title>
+<title>Relay</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="leaflet.css">
 <style>
 :root{
-  --navy:#1C1E22; --panel:#25282E; --bone:#F2F0EA; --grey:#8A93A3; --amber:#F2B33D; --ink:#15171C; --red:#E5483B;
-  --display:"Archivo","Arial Black",system-ui,sans-serif;
+  --navy:#1C1E22; --panel:#171A24; --bone:#EEE8DC; --grey:#9796AC; --amber:#F2B33D; --ink:#15171C; --red:#E5483B;
+  --display:"Barlow","Helvetica Neue",Arial,system-ui,sans-serif;
   --body:"Barlow","Helvetica Neue",Arial,system-ui,sans-serif;
   --pad:24px;
   color-scheme:dark;
@@ -26,11 +26,11 @@ body.listening{background:var(--amber);color:var(--ink)}
 .app{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;padding:calc(var(--pad) + env(safe-area-inset-top,0px)) var(--pad) 0}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex:none}
 .top .word{flex:1 1 auto}
-.word{all:unset;display:block;min-width:0;max-width:100%;cursor:pointer;font-family:var(--display);font-stretch:125%;font-weight:800;font-size:72px;line-height:72px;letter-spacing:.01em;white-space:pre-line;text-wrap:balance}
+.word{all:unset;display:block;min-width:0;max-width:100%;cursor:pointer;font-family:var(--display);font-weight:600;font-size:80px;line-height:76px;letter-spacing:-.015em;white-space:pre-line;text-wrap:balance}
 /* instruction type: the biggest step on the scale that fits in 4 lines and 216px tall (72 > 64 > 56 > 48 > 40 > 36 > 32). Set in fitInstr(). */
-.word.instr{letter-spacing:0;font-stretch:112%;white-space:normal;overflow-wrap:normal}
+.word.instr{letter-spacing:-.01em;white-space:normal;overflow-wrap:normal}
 .word:focus-visible{outline:3px solid var(--amber);outline-offset:4px}
-.word.greet{white-space:pre-line;font-stretch:112%;letter-spacing:.005em}
+.word.greet{white-space:pre-line;letter-spacing:-.015em}
 .close{all:unset;flex:none;width:48px;height:48px;margin:-8px -12px 0 0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--grey)}
 .close svg{width:28px;height:28px}
 body.listening .close{color:var(--ink)}
@@ -47,7 +47,7 @@ body.listening .close{color:var(--ink)}
 .mapctl button:focus-visible{outline:2px solid var(--amber)}
 .mapnote{position:absolute;left:12px;bottom:12px;z-index:500;background:rgba(28,30,34,.88);padding:4px 8px;border-radius:8px;font-size:14px;line-height:20px;color:var(--bone)}
 .leaflet-container{background:var(--panel);font-family:var(--body)}
-.leaflet-control-attribution{background:rgba(28,30,34,.72)!important;color:var(--grey)!important;font-size:11px;border-radius:8px 0 0 0}
+.leaflet-control-attribution{background:rgba(23,26,36,.72)!important;color:var(--grey)!important;font-size:11px;border-radius:8px 0 0 0}
 .leaflet-control-attribution a{color:var(--bone)!important}
 /* bottom of the screen: a yellow mic to talk (big on home, small on answers). The soundwave appears only on the yellow listening screen. */
 .dock{flex:none;height:calc(112px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);display:flex;align-items:center;justify-content:center}
@@ -80,7 +80,7 @@ body.listening .wave{display:flex}
   </div>
   <p class="ctxline" id="ctx"></p>
   <div class="stage" id="stage"></div>
-  <div class="dock"><button class="mic" id="mic" type="button" aria-label="Talk to Spottr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5M8.5 21h7"/></svg></button><div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="dock"><button class="mic" id="mic" type="button" aria-label="Talk to Relay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5M8.5 21h7"/></svg></button><div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div>
   <div class="sr" id="vstate" aria-live="polite"></div>
 </div>
 
@@ -148,8 +148,8 @@ const QUESTS = [
   { n: "Wires Crossed", al: ["wires crossed", "snitch scanner"], who: "Celeste", note: "Position: MetaForge.",
     steps: [
       { t: "On Blue Gate, attach a Snitch Scanner to the antenna at Pilgrim's Peak", go: "The antenna is on Pilgrim's Peak, in the north-east.", pin: fromRow(byName("attach a Snitch Scanner"), "Antenna") },
-      { t: "On Spaceport, attach a Surveyor Vault to the antenna on the Launch Towers", go: "Spottr only has Blue Gate's map so far." },
-      { t: "On Buried City, attach a Sentinel Firing Core to the antenna on the Grandioso Apartments roof", go: "Spottr only has Blue Gate's map so far." }
+      { t: "On Spaceport, attach a Surveyor Vault to the antenna on the Launch Towers", go: "Relay only has Blue Gate's map so far." },
+      { t: "On Buried City, attach a Sentinel Firing Core to the antenna on the Grandioso Apartments roof", go: "Relay only has Blue Gate's map so far." }
     ] },
   { n: "The First Nomads", al: ["first nomads", "nomads"], who: "", note: "Positions: MetaForge.",
     steps: [
@@ -181,7 +181,7 @@ const QUESTS = [
       { t: "Investigate the unknown ARC machines", pin: fromRow(byName("Investigate the Unknown Arc"), "ARC machines"), al: ["unknown arc", "machines"] }
     ] },
   { n: "Bait, Fetch, Blast", al: ["bait", "fetch", "blast", "bully"], who: "Apollo",
-    steps: [ { t: "Destroy a Bully, its head, or 4 of its legs", go: "This one's on Pendola Pass. Spottr only has Blue Gate's map so far." }, { t: "Deliver a Bully Fragmenter to Apollo", go: "The Fragmenter comes from the Bully." } ] },
+    steps: [ { t: "Destroy a Bully, its head, or 4 of its legs", go: "This one's on Pendola Pass. Relay only has Blue Gate's map so far." }, { t: "Deliver a Bully Fragmenter to Apollo", go: "The Fragmenter comes from the Bully." } ] },
   { n: "Taking Stock", al: ["taking stock"], who: "Cassio",
     steps: [ { t: "On Stella Montis, photograph the sculpture in the Atrium" }, { t: "On Spaceport, photograph a Baron Husk" }, { t: "Deliver 3 Industrial Batteries to the Nomadic Envoy" }, { t: "Ping a Bombardier on Dam, or a Bastion on Buried City" } ] },
   { n: "Boarding the Frigate", al: ["frigate"], who: "Shani",
@@ -210,7 +210,7 @@ const near = (p, list) => list.slice().sort((a, b) => dist(p, a) - dist(p, b))[0
 
 /* =================== understanding =================== */
 const has = (t, words) => words.some(w => t.includes(w));
-const norm = raw => " " + raw.toLowerCase().replace(/\b(hey|hi|ok|okay)?\s*(spotter|spottr|spotted|spot her)\b[,]?/g, " ").replace(/[’]/g, "'").replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ") + " ";
+const norm = raw => " " + raw.toLowerCase().replace(/\b(hey|hi|ok|okay)?\s*(relay|really|re lay|spotter|spottr)\b[,]?/g, " ").replace(/[’]/g, "'").replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ") + " ";
 function findPlace(t) { return PLACES.find(p => p.al.some(a => t.includes(a))); }
 function findQuest(t) { return QUESTS.find(q => q.al.some(a => t.includes(a))); }
 const placeAge = () => S.placeAt ? (Date.now() - S.placeAt) / 60000 : Infinity;
@@ -390,7 +390,7 @@ const CAP = window.Capacitor && window.Capacitor.isNativePlatform && window.Capa
 const WebRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 /* Spoken voice: prefer Google's natural en-GB voices on the phone ("network" ones sound best, "local" work offline).
-   Say "change voice" to try the next one; Spottr remembers your pick. */
+   Say "change voice" to try the next one; Relay remembers your pick. */
 let VOICES = [], voiceIdx = -1, webVoice = null;
 const VOICE_PREF = ["en-gb-x-gbd-network", "en-gb-x-gbb-network", "en-gb-x-gbc-network", "en-gb-x-gbg-network", "en-gb-x-rjs-network", "en-gb-x-gbd-local", "en-gb-x-gbb-local", "en-gb-x-gbc-local"];
 async function loadVoices() {
@@ -435,7 +435,7 @@ function speak(s, done) {
 function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (CAP && CAP.TextToSpeech) CAP.TextToSpeech.stop(); else speechSynthesis.cancel(); } catch (e) {} }
 
 /* =================== listening =================== */
-/* Conversation: after every answer Spottr keeps listening, re-arming the microphone each time the phone's recogniser
+/* Conversation: after every answer Relay keeps listening, re-arming the microphone each time the phone's recogniser
    times out, until CONVO_MS of silence. Then it stands by with the last answer on screen; tap the soundwave or the screen to talk.
    It only starts listening once its own speech has finished, so it never hears itself. */
 const CONVO_MS = 45000;
@@ -458,7 +458,7 @@ function nothingHeard(startedAt, err) {
     keepConversation(); return;
   }
   renderBack();
-  if (err === "permission") showError("Spottr needs the microphone to hear you. Allow it in Settings, Apps, Spottr, Permissions.");
+  if (err === "permission") showError("Relay needs the microphone to hear you. Allow it in Settings, Apps, Relay, Permissions.");
   else if (err === "network") showError("Speech needs a connection. Check your signal and tap again.");
   else showError("Didn't catch that. Tap and try again.");
 }
@@ -479,7 +479,7 @@ async function listen(opts) {
     } catch (e) { const m = String(e && (e.message || e)); nothingHeard(startedAt, /network/i.test(m) ? "network" : /permission/i.test(m) ? "permission" : ""); }
     return;
   }
-  if (!WebRec) { showError("Voice isn't available here. Open Spottr on your phone."); return; }
+  if (!WebRec) { showError("Voice isn't available here. Open Relay on your phone."); return; }
   webRec = new WebRec(); webRec.lang = "en-GB"; webRec.interimResults = false; webRec.maxAlternatives = 1;
   let finalText = "", err = "";
   listening = true; startListeningUI(auto);
@@ -503,15 +503,15 @@ function setWord(txt, instr) {
   requestAnimationFrame(() => {
     const avail = w.parentElement.clientWidth - ($("close").hidden ? 0 : 52);
     w.style.whiteSpace = "pre"; const need = w.scrollWidth; w.style.whiteSpace = "";
-    if (need > avail && avail > 0) { const size = Math.max(32, Math.floor(72 * avail / need)); w.style.fontSize = size + "px"; w.style.lineHeight = size + "px"; }
+    if (need > avail && avail > 0) { const size = Math.max(36, Math.floor(80 * avail / need)); w.style.fontSize = size + "px"; w.style.lineHeight = Math.round(size * .95) + "px"; }
   });
 }
 /* type rule: short instructions are huge, longer ones step down. Aim for 40 characters, never over 60. */
-const TYPE_SCALE = [72, 64, 56, 48, 40, 36, 32];
+const TYPE_SCALE = [80, 72, 64, 56, 48, 44, 40, 36];
 function fitInstr(w) {
   w.style.overflowWrap = "normal";
   for (const s of TYPE_SCALE) {
-    const lh = Math.round(s * 1.08);
+    const lh = Math.round(s * 1.02);
     w.style.fontSize = s + "px"; w.style.lineHeight = lh + "px";
     if (Math.floor(w.scrollHeight / lh) <= 4 && w.scrollHeight <= 216 && w.scrollWidth <= w.clientWidth + 1) return s;
   }
@@ -527,7 +527,7 @@ const LINES = ["Let's get you home in one piece.", "Need a hand topside?", "Try 
 const LINE = (() => { let last = -1; try { last = parseInt(localStorage.getItem("spottr-line") || "-1", 10); } catch (e) {} let i = Math.floor(Math.random() * (LINES.length - 1)); if (i >= last && last >= 0) i++; try { localStorage.setItem("spottr-line", String(i)); } catch (e) {} return LINES[i]; })();
 function fitGreet(w) {
   const room = Math.max(240, $("stage").getBoundingClientRect().bottom - w.getBoundingClientRect().top - 24);
-  for (const s of [64, 56, 48, 44, 40, 36]) { const lh = Math.round(s * 1.05); w.style.fontSize = s + "px"; w.style.lineHeight = lh + "px"; if (w.scrollWidth <= w.clientWidth + 1 && w.scrollHeight <= room && w.scrollHeight <= lh * 6 + 2) return; }
+  for (const s of [72, 64, 56, 52, 48, 44, 40]) { const lh = Math.round(s * 1.0); w.style.fontSize = s + "px"; w.style.lineHeight = lh + "px"; if (w.scrollWidth <= w.clientWidth + 1 && w.scrollHeight <= room && w.scrollHeight <= lh * 6 + 2) return; }
 }
 function setSub() {}
 function setCtx(t) { $("ctx").textContent = t || ""; }

@@ -1,6 +1,6 @@
 {
-  "name": "Spottr",
-  "short_name": "Spottr",
+  "name": "Relay",
+  "short_name": "Relay",
   "description": "A voice companion for ARC Raiders.",
   "start_url": "./",
   "scope": "./",
