@@ -319,7 +319,7 @@ function answer(raw, opts) {
   const ps = opts.general ? "general" : posState();
 
   if (has(t, ["change voice", "different voice", "another voice", "next voice", "new voice"])) return nextVoice();
-  if (has(t, ["voice test", "test voice", "test the voice", "testing"])) return { show: "Voice test.", say: "You need to get to the locker room. Take the stairs on your right, then the door is straight ahead.", ctx: voiceInfo(), keepLast: false, follow: true };
+  if (has(t, ["voice test", "test voice", "test the voice", "testing"])) return { show: "Voice test.", say: TEST_LINE, ctx: "Speaking after the microphone...", after: () => setCtx(voiceInfo() + " Straight after the mic."), follow: false };
   if (has(t, ["that's all", "thats all", "stop listening", "thanks", "thank you", "cheers", "that's it", "thats it"]) && t.trim().split(" ").length <= 4) return { show: "Standing by.", say: "Standing by.", follow: false, keepLast: true };
   if (S.last && S.last.a && has(t, ["more detail", "more details", "tell me more", "say again", "say that again", "repeat", "not sure", "didn't catch", "didnt catch", " what ", "pardon", "explain"]) && t.trim().split(" ").length <= 6) {
     const a = Object.assign({}, S.last.a); a.say = a.full || a.say; return a;
@@ -635,7 +635,7 @@ function handle(q) {
   q = (q || "").trim(); if (!q) return;
   let a = S.pending ? resolvePending(q) : null;
   if (!a) a = answer(q);
-  const go = () => { if (a.follow === false) { convoUntil = 0; endFollow(); return; } convoUntil = Date.now() + CONVO_MS; setTimeout(() => listen({ auto: true }), 350); };
+  const go = () => { if (a.after) a.after(); if (a.follow === false) { convoUntil = 0; endFollow(); return; } convoUntil = Date.now() + CONVO_MS; setTimeout(() => listen({ auto: true }), 350); };
   if (a.keepLast && S.last) { renderAnswer(S.last.q, S.last.a); speak(a.say, go); return; }
   S.last = { q, a }; save();
   renderAnswer(q, a);
@@ -643,7 +643,13 @@ function handle(q) {
 }
 /* the mic is the button, and so is the screen (except the map). Tap while listening to stop. */
 $("mic").addEventListener("click", e => { e.stopPropagation(); listen(); });
-$("word").addEventListener("click", () => listen());
+/* tapping the greeting reads it aloud without touching the microphone: a clean test of the voice on its own */
+const TEST_LINE = "You need to get to the locker room. Take the stairs on your right, then the door is straight ahead.";
+$("word").addEventListener("click", () => {
+  const w = $("word");
+  if (w.classList.contains("greet")) { setCtx("Speaking without the microphone..."); speak(w.textContent.replace(/\n/g, " ") + " " + TEST_LINE, () => setCtx(voiceInfo() + " Mic not used.")); return; }
+  listen();
+});
 document.querySelector(".app").addEventListener("click", e => { if (e.target.closest(".mapwrap,.close,.mic,.word")) return; listen(); });
 $("close").addEventListener("click", e => { e.stopPropagation(); stopSpeaking(); stopListening(); endFollow(); const v = S.voice; S = Object.assign({}, EMPTY); S.voice = v; S.voiceV = 2; save(); renderReady(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) { convoUntil = 0; stopListening(); stopSpeaking(); endFollow(); } });
