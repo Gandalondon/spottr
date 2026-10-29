@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="leaflet.css">
 <style>
 :root{
-  --navy:#1C1E22; --panel:#171A24; --bone:#EEE8DC; --grey:#9796AC; --amber:#F2B33D; --ink:#15171C; --red:#E5483B;
+  --navy:#1C1E22; --panel:#171A24; --bone:#EEE8DC; --grey:#EEE8DC; /* no grey: three colours only, off-white, blue-black, yellow */ --amber:#F2B33D; --ink:#15171C; --red:#E5483B;
   --display:"Barlow","Helvetica Neue",Arial,system-ui,sans-serif;
   --body:"Barlow","Helvetica Neue",Arial,system-ui,sans-serif;
   --pad:24px;
@@ -50,12 +50,9 @@ body.listening .close{color:var(--grey)}
 .leaflet-control-attribution{background:rgba(23,26,36,.72)!important;color:var(--grey)!important;font-size:11px;border-radius:8px 0 0 0}
 .leaflet-control-attribution a{color:var(--bone)!important}
 /* bottom of the screen: a yellow mic to talk (big on home, small on answers). The yellow soundwave appears only on the listening screen. */
-.dock{flex:none;height:calc(112px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);display:flex;align-items:center;justify-content:center}
-body.session .dock{height:calc(88px + env(safe-area-inset-bottom,0px))}
+.dock{flex:none;height:calc(104px + env(safe-area-inset-bottom,0px));  /* the same height on every screen, so the mic never moves */padding-bottom:env(safe-area-inset-bottom,0px);display:flex;align-items:center;justify-content:center}
 .mic{all:unset;cursor:pointer;display:flex;align-items:center;justify-content:center;width:88px;height:88px;color:var(--amber)}
-.mic svg{width:56px;height:56px}
-body.session .mic{width:64px;height:64px}
-body.session .mic svg{width:36px;height:36px}
+.mic svg{width:48px;height:48px}  /* one size on every screen: home, listening and answers */
 body.follow .mic svg,body.listening .mic svg{animation:hear 1.2s ease-in-out infinite}  /* listening: the same mic, gently pulsing; no waveform */
 @keyframes hear{0%,100%{opacity:1}50%{opacity:.35}}
 .mic:focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:999px}
