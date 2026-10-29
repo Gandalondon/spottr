@@ -487,7 +487,7 @@ function speak(s, done) {
   setVoiceState("speaking");
   if (RV) {
     const v = voiceIdx >= 0 ? VOICES[voiceIdx] : null;
-    RV.speak({ text: s, voice: v ? v.name : "", rate: RATE, pitch: 1.0 }).then(r => { if (r && r.mode != null) lastMode = r.mode; RV.voices().then(x => { VINFO = x; }).catch(() => {}); fin(!(r && r.stopped)); }).catch(() => fin(false));
+    RV.speak({ text: s, voice: v ? v.name : "", rate: S.voiceRate || RATE, pitch: 1.0, plain: !!S.voicePlain }).then(r => { if (r && r.mode != null) lastMode = r.mode; RV.voices().then(x => { VINFO = x; }).catch(() => {}); fin(!(r && r.stopped)); }).catch(() => fin(false));
     return;
   }
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(s); if (webVoice) u.voice = webVoice; u.lang = "en-GB"; u.rate = RATE; u.onend = () => fin(true); u.onerror = () => fin(false); speechSynthesis.speak(u); } catch (e) { fin(false); }
@@ -670,7 +670,9 @@ async function openVoices() {
   const box = $("vlist"), ul = $("vitems"); box.hidden = false; ul.innerHTML = "";
   let all = [];
   try { const r = RV ? await RV.voices() : null; all = (r && r.voices) || []; } catch (e) {}
-  const fixed = [{ name: "@system", label: "Same as Android settings Play", meta: "Names only your phone's language and lets Google choose" },
+  const fixed = [{ name: "@system", rate: 1.0, label: "Test A: settings voice, normal speed", meta: "Speed 1.0 instead of 0.95" },
+                 { name: "@system", rate: 1.0, plain: true, label: "Test B: settings voice, normal speed, plain audio", meta: "Speed 1.0, no assistant audio type: closest to the settings Play button" },
+                 { name: "@system", label: "Same as Android settings Play", meta: "Names only your phone's language and lets Google choose" },
                  { name: "@uk", label: "UK English, Google's choice", meta: "Names UK English and lets Google choose" },
                  { name: "", label: "Google default voice object", meta: "What Relay has been using" }];
   const rank = v => (/^en-GB/i.test(v.lang) ? 0 : /^en-US/i.test(v.lang) ? 1 : 2);
@@ -682,7 +684,7 @@ async function openVoices() {
     if ((S.voice || "") === v.name && S.voicePicked) b.classList.add("on");
     b.addEventListener("click", () => {
       ul.querySelectorAll("button.on").forEach(x => x.classList.remove("on")); b.classList.add("on");
-      S.voice = v.name; S.voicePicked = true; S.voiceV = 2; save();
+      S.voice = v.name; S.voicePicked = true; S.voiceV = 2; S.voiceRate = v.rate || null; S.voicePlain = !!v.plain; save();
       VOICES = [{ name: v.name, label: v.label }]; voiceIdx = 0;
       speak(TEST_LINE);
     });

@@ -150,6 +150,11 @@ public class RelayVoicePlugin extends Plugin {
             if (def != null && def.getLocale() != null && "en".equals(def.getLocale().getLanguage())) tts.setVoice(def);
             else tts.setLanguage("en".equals(sys.getLanguage()) ? sys : Locale.UK);
         }
+        // "plain": no audio type set, as Android's settings Play button does; otherwise speak as an assistant reply
+        boolean plain = Boolean.TRUE.equals(call.getBoolean("plain", false));
+        tts.setAudioAttributes(plain
+            ? new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+            : new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
         tts.setSpeechRate(rate);
         tts.setPitch(pitch);
         // the microphone can leave the phone in call mode, which gates the gaps between words: put it back to normal first
