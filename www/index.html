@@ -32,7 +32,7 @@ body.listening{background:var(--navy);color:var(--bone)}
 .word:focus-visible{outline:3px solid var(--amber);outline-offset:4px}
 .word.greet{white-space:pre-line;letter-spacing:-.015em}
 .close{all:unset;flex:none;width:48px;height:48px;margin:-8px -12px 0 0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--amber)}  /* the close X is yellow, like the mic */
-.close svg{width:28px;height:28px}
+.close svg{width:32px;height:32px}
 body.listening .close{color:var(--amber)}
 .close[hidden],.word[hidden]{display:none}
 .ctxline{margin:16px 0 0;font-size:16px;line-height:24px;color:var(--grey);text-wrap:pretty}
@@ -43,7 +43,7 @@ body.listening .close{color:var(--amber)}
 .map{position:absolute;inset:0;background:var(--panel);touch-action:none}
 .mapctl{position:absolute;right:12px;top:12px;z-index:500;display:flex;flex-direction:column;gap:8px}
 .mapctl button{all:unset;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(28,30,34,.72);color:var(--bone);cursor:pointer}
-.mapctl svg{width:20px;height:20px}
+.mapctl svg{width:22px;height:22px}
 .mapctl button:focus-visible{outline:2px solid var(--amber)}
 .mapnote{position:absolute;left:12px;bottom:12px;z-index:500;background:rgba(28,30,34,.88);padding:4px 8px;border-radius:8px;font-size:14px;line-height:20px;color:var(--bone)}
 .leaflet-container{background:var(--panel);font-family:var(--body)}
@@ -54,13 +54,13 @@ body.listening .close{color:var(--amber)}
 /* the talk button (option C, 29 Oct): yellow circle with a dark mic. Listening: waveform icon and a soft halo that breathes.
    Speaking: outlined circle with a yellow waveform. Same size and place on every screen. */
 .mic{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;background:var(--amber);color:var(--ink);border:2px solid var(--amber);transition:background .15s,color .15s,box-shadow .2s}
-.mic svg{width:32px;height:32px}
+.mic svg{width:36px;height:36px}
 .mic .wv{display:none}
 body.listening .mic,body.follow:not(.speaking) .mic{box-shadow:0 0 0 10px rgba(242,179,61,.28),0 0 0 22px rgba(242,179,61,.12);animation:halo 1.6s ease-in-out infinite}
 body.listening .mic .mc,body.follow:not(.speaking) .mic .mc,body.speaking .mic .mc{display:none}
 body.listening .mic .wv,body.follow:not(.speaking) .mic .wv,body.speaking .mic .wv{display:block}
 body.speaking:not(.listening) .mic{background:transparent;color:var(--amber);box-shadow:none;animation:none}
-body.speaking:not(.listening) .mic svg{width:28px;height:28px}
+body.speaking:not(.listening) .mic svg{width:32px;height:32px}
 @keyframes halo{0%,100%{box-shadow:0 0 0 8px rgba(242,179,61,.30),0 0 0 18px rgba(242,179,61,.12)}50%{box-shadow:0 0 0 12px rgba(242,179,61,.26),0 0 0 26px rgba(242,179,61,.08)}}
 .mic:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
 .wave{display:none;align-items:center;justify-content:center;gap:9px;height:88px;color:var(--amber)}
@@ -90,7 +90,7 @@ body.intro .app{opacity:0}
 .vlist li .m{display:block;font-size:14px;line-height:20px;opacity:.75}
 .gkey{margin:0 0 20px;display:flex;flex-direction:column;gap:8px}
 .gkey label{font-size:16px;line-height:24px}
-.gkey input{all:unset;box-sizing:border-box;width:100%;height:48px;padding:0 16px;border-radius:12px;background:#FFFFFF;color:var(--ink);font:400 16px/48px var(--body)}
+.gkey input{all:unset;box-sizing:border-box;width:100%;height:48px;padding:0 16px;border-radius:12px;background:var(--bone);color:var(--ink);font:400 16px/48px var(--body)}
 .gkey .gkrow{display:flex;gap:8px}
 .gkey button{all:unset;cursor:pointer;height:44px;padding:0 20px;border-radius:999px;background:var(--amber);color:var(--ink);font:600 16px/44px var(--body)}
 .gkey button[hidden]{display:none}
@@ -106,7 +106,7 @@ body.intro .app{opacity:0}
 .about{margin:0 0 12px;font-size:16px;line-height:24px;text-wrap:pretty}
 .about.ver{opacity:.75;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .dbg{white-space:pre-wrap;font:400 14px/20px ui-monospace,monospace;margin:0;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));-webkit-user-select:text;user-select:text}
-.cog svg{width:26px;height:26px}
+.cog svg{width:28px;height:28px}
 /* settings only on the home screen: hidden while listening, speaking or in a conversation, so it can't interrupt */
 body.session .cog,body.listening .cog,body.speaking .cog,body.follow .cog{display:none}
 @media (prefers-reduced-motion:reduce){body{transition:none} .wave i,.mic svg,.mic{animation:none!important}}
@@ -116,17 +116,17 @@ body.session .cog,body.listening .cog,body.speaking .cog,body.follow .cog{displa
 <div class="app">
   <div class="top">
     <button class="word" id="word" type="button" aria-live="polite"></button>
-    <button class="close cog" id="cog" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-    <button class="close" id="close" type="button" aria-label="Close and start again" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <button class="close cog" id="cog" type="button" aria-label="Settings"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M421-80q-14 0-25-9t-13-23l-15-94q-19-7-40-19t-37-25l-86 40q-14 6-28 1.5T155-226L97-330q-8-13-4.5-27t15.5-23l80-59q-2-9-2.5-20.5T185-480q0-9 .5-20.5T188-521l-80-59q-12-9-15.5-23t4.5-27l58-104q8-13 22-17.5t28 1.5l86 40q16-13 37-25t40-18l15-95q2-14 13-23t25-9h118q14 0 25 9t13 23l15 94q19 7 40.5 18.5T669-710l86-40q14-6 27.5-1.5T804-734l59 104q8 13 4.5 27.5T852-580l-80 57q2 10 2.5 21.5t.5 21.5q0 10-.5 21t-2.5 21l80 58q12 8 15.5 22.5T863-330l-58 104q-8 13-22 17.5t-28-1.5l-86-40q-16 13-36.5 25.5T592-206l-15 94q-2 14-13 23t-25 9H421Zm15-60h88l14-112q33-8 62.5-25t53.5-41l106 46 40-72-94-69q4-17 6.5-33.5T715-480q0-17-2-33.5t-7-33.5l94-69-40-72-106 46q-23-26-52-43.5T538-708l-14-112h-88l-14 112q-34 7-63.5 24T306-642l-106-46-40 72 94 69q-4 17-6.5 33.5T245-480q0 17 2.5 33.5T254-413l-94 69 40 72 106-46q24 24 53.5 41t62.5 25l14 112Zm44-210q54 0 92-38t38-92q0-54-38-92t-92-38q-54 0-92 38t-38 92q0 54 38 92t92 38Zm0-130Z"/></svg></button>
+    <button class="close" id="close" type="button" aria-label="Close and start again" hidden><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M480-438 270-228q-9 9-21 9t-21-9q-9-9-9-21t9-21l210-210-210-210q-9-9-9-21t9-21q9-9 21-9t21 9l210 210 210-210q9-9 21-9t21 9q9 9 9 21t-9 21L522-480l210 210q9 9 9 21t-9 21q-9 9-21 9t-21-9L480-438Z"/></svg></button>
   </div>
   <p class="ctxline" id="ctx"></p>
   <div class="stage" id="stage"></div>
-  <div class="dock"><button class="mic" id="mic" type="button" aria-label="Talk to Relay"><svg class="mc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5M8.5 21h7"/></svg><svg class="wv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg></button></div>
+  <div class="dock"><button class="mic" id="mic" type="button" aria-label="Talk to Relay"><svg class="mc" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M408-453.92q-29-30.91-29-75.08v-251q0-41.67 29.44-70.83Q437.88-880 479.94-880t71.56 29.17Q581-821.67 581-780v251q0 44.17-29 75.08Q523-423 480-423t-72-30.92ZM480-651Zm-30 501v-106q-96-11-166.5-77.5T202-498q-2-12.85 6.59-21.93 8.6-9.07 21.5-9.07 12.91 0 21.41 9t10.5 22q12 81 74.71 132.5Q399.42-314 479.65-314q81.35 0 143.85-51.5T698-498q2-13 10.68-22 8.67-9 21.5-9 12.82 0 21.32 9.07 8.5 9.08 6.5 21.93-11 97-81 164t-167 78v106q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37Zm59.5-346.5Q521-510 521-529v-251q0-17-11.79-28.5T480-820q-17.42 0-29.21 11.5T439-780v251q0 19 11.5 32.5T480-483q18 0 29.5-13.5Z"/></svg><svg class="wv" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M285-270v-420q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v420q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37Zm165 160v-740q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v740q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63Q450-97.25 450-110ZM120-430v-100q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v100q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37Zm495 160v-420q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v420q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37Zm165-160v-100q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v100q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37Z"/></svg></button></div>
   <div class="sr" id="vstate" aria-live="polite"></div>
 </div>
 
 <div class="vlist" id="settings" hidden role="dialog" aria-label="Settings">
-  <div class="vhead"><button class="back" id="setback" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Settings</h2></div>
+  <div class="vhead"><button class="back" id="setback" type="button" aria-label="Back"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="m274-450 227 227q9 9 9 21t-9 21q-9 9-21 9t-21-9L181-459q-5-5-7-10t-2-11q0-6 2-11t7-10l278-278q9-9 21-9t21 9q9 9 9 21t-9 21L274-510h496q13 0 21.5 8.5T800-480q0 13-8.5 21.5T770-450H274Z"/></svg></button><h2>Settings</h2></div>
   <h3>Voice</h3>
   <ul><li><button type="button" id="setvoice"><span class="n" id="setvname"></span><span class="m" id="setvmeta"></span></button></li></ul>
   <h3>Speaking speed</h3>
@@ -137,12 +137,12 @@ body.session .cog,body.listening .cog,body.speaking .cog,body.follow .cog{displa
   <p class="about ver" id="ver"></p>
 </div>
 <div class="vlist" id="vlist" hidden role="dialog" aria-label="Voice">
-  <div class="vhead"><button class="back" id="vback" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Voice</h2></div>
+  <div class="vhead"><button class="back" id="vback" type="button" aria-label="Back"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="m274-450 227 227q9 9 9 21t-9 21q-9 9-21 9t-21-9L181-459q-5-5-7-10t-2-11q0-6 2-11t7-10l278-278q9-9 21-9t21 9q9 9 9 21t-9 21L274-510h496q13 0 21.5 8.5T800-480q0 13-8.5 21.5T770-450H274Z"/></svg></button><h2>Voice</h2></div>
   <div class="gkey" id="ov"><p id="ovstat"></p><div class="gkrow"><button type="button" id="ovget">Download voice (130 MB)</button></div></div>
   <ul id="ovitems"></ul>
 </div>
 <div class="vlist" id="debug" hidden role="dialog" aria-label="Diagnostics">
-  <div class="vhead"><button class="back" id="dback" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Diagnostics</h2></div>
+  <div class="vhead"><button class="back" id="dback" type="button" aria-label="Back"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="m274-450 227 227q9 9 9 21t-9 21q-9 9-21 9t-21-9L181-459q-5-5-7-10t-2-11q0-6 2-11t7-10l278-278q9-9 21-9t21 9q9 9 9 21t-9 21L274-510h496q13 0 21.5 8.5T800-480q0 13-8.5 21.5T770-450H274Z"/></svg></button><h2>Diagnostics</h2></div>
   <pre class="dbg" id="dbg"></pre>
 </div>
 <script src="leaflet.js"></script>
@@ -761,8 +761,8 @@ function renderBack() { setVoiceState("idle"); document.body.classList.remove("l
 function showError(msg) { setVoiceState("idle"); bars(false); document.body.classList.remove("listening", "follow"); document.body.classList.add("session"); $("close").hidden = false; clearMap(); setWord(msg, true); setSub(""); setCtx(""); $("stage").innerHTML = ""; }
 
 const IC = {
-  centre: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>',
-  whole: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>'
+  centre: '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M450-72v-45q-137-14-228-105T117-450H72q-13 0-21.5-8.5T42-480q0-13 8.5-21.5T72-510h45q14-137 105-228t228-105v-45q0-13 8.5-21.5T480-918q13 0 21.5 8.5T510-888v45q137 14 228 105t105 228h45q13 0 21.5 8.5T918-480q0 13-8.5 21.5T888-450h-45q-14 137-105 228T510-117v45q0 13-8.5 21.5T480-42q-13 0-21.5-8.5T450-72Zm244.5-193.5Q784-355 784-480t-89.5-214.5Q605-784 480-784t-214.5 89.5Q176-605 176-480t89.5 214.5Q355-176 480-176t214.5-89.5Zm-321-108Q330-417 330-480t43.5-106.5Q417-630 480-630t106.5 43.5Q630-543 630-480t-43.5 106.5Q543-330 480-330t-106.5-43.5ZM544-416q26-26 26-64t-26-64q-26-26-64-26t-64 26q-26 26-26 64t26 64q26 26 64 26t64-26Zm-64-64Z"/></svg>',
+  whole: '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M180-180h103q12.75 0 21.38 8.68 8.62 8.67 8.62 21.5 0 12.82-8.62 21.32-8.63 8.5-21.38 8.5H150q-12.75 0-21.37-8.63Q120-137.25 120-150v-133q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v103Zm600 0v-103q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v133q0 12.75-8.62 21.37Q822.75-120 810-120H677q-12.75 0-21.37-8.68-8.63-8.67-8.63-21.5 0-12.82 8.63-21.32 8.62-8.5 21.37-8.5h103ZM180-780v103q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37v-133q0-12.75 8.63-21.38Q137.25-840 150-840h133q12.75 0 21.38 8.68 8.62 8.67 8.62 21.5 0 12.82-8.62 21.32-8.63 8.5-21.38 8.5H180Zm600 0H677q-12.75 0-21.37-8.68-8.63-8.67-8.63-21.5 0-12.82 8.63-21.32 8.62-8.5 21.37-8.5h133q12.75 0 21.38 8.62Q840-822.75 840-810v133q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37v-103Z"/></svg>'
 };
 function renderAnswer(q, a) {
   clearMap(); bars(false);
@@ -776,8 +776,8 @@ function mapLabel(m) { const p = []; if (m.you) p.push((m.you.guess ? "probably 
 
 /* markers: a yellow dot for the place, a white dot for you, a dashed ring when your position is a guess */
 const DOT = s => '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:#F2B33D;box-shadow:0 0 0 3px #1C1E22,0 0 0 5px rgba(242,179,61,.35)"></div>';
-const YOU = '<div style="width:20px;height:20px;border-radius:50%;background:#F2F0EA;box-shadow:0 0 0 3px #1C1E22"></div>';
-const YOU_GUESS = '<div style="width:44px;height:44px;border-radius:50%;border:2px dashed #F2F0EA;display:flex;align-items:center;justify-content:center"><div style="width:10px;height:10px;border-radius:50%;background:#F2F0EA"></div></div>';
+const YOU = '<div style="width:20px;height:20px;border-radius:50%;background:#EEE8DC;box-shadow:0 0 0 3px #1C1E22"></div>';
+const YOU_GUESS = '<div style="width:44px;height:44px;border-radius:50%;border:2px dashed #EEE8DC;display:flex;align-items:center;justify-content:center"><div style="width:10px;height:10px;border-radius:50%;background:#EEE8DC"></div></div>';
 function drawMap(m) {
   if (!$("map")) return;
   if (!window.L) { $("mapnote").hidden = false; $("mapnote").textContent = "Map couldn't load."; return; }
@@ -790,7 +790,7 @@ function drawMap(m) {
   tl.on("tileerror", () => { fails++; if (fails === 3) { $("mapnote").hidden = false; $("mapnote").textContent = "Map needs a connection. The answer above still stands."; } });
   const ll = p => [p.y, p.x];
   const single = m.stars.length === 1;
-  if (m.you && single) L.polyline([ll(m.you), ll(m.stars[0])], { color: "#F2F0EA", weight: 2, opacity: .7, dashArray: "4 8", lineCap: "round" }).addTo(lmap);
+  if (m.you && single) L.polyline([ll(m.you), ll(m.stars[0])], { color: "#EEE8DC", weight: 2, opacity: .7, dashArray: "4 8", lineCap: "round" }).addTo(lmap);
   m.stars.forEach(p => { const s = single ? 22 : 14; L.marker(ll(p), { icon: L.divIcon({ className: "", html: DOT(s), iconSize: [s, s], iconAnchor: [s / 2, s / 2] }), keyboard: false, interactive: false }).addTo(lmap); });
   if (m.you) { const g = !!m.you.guess, s = g ? 44 : 20; L.marker(ll(m.you), { icon: L.divIcon({ className: "", html: g ? YOU_GUESS : YOU, iconSize: [s, s], iconAnchor: [s / 2, s / 2] }), keyboard: false, interactive: false }).addTo(lmap); }
   const pts = [...m.stars, ...(m.you ? [m.you] : [])].map(ll);
