@@ -313,10 +313,11 @@ function stepAnswer(q, i, prefix) {
       else { map = { you: null, stars: pts, others: [] }; go = go || pts.length + " " + st.enemy + " spawn points on Blue Gate."; }
     } else go = go || "I have no " + st.enemy + " spawn points on Blue Gate.";
   }
-  /* the map is for getting from A to B. Once you're there (same spot as the step before, and not a "head to" step), no map. */
-  const travel = /^(head|reach|go |get |enter|return|find the start|follow|make your way|on \w+, attach|on \w+, photograph|take a photo)/i.test(st.t);
-  const sameSpot = i > 0 && q.steps[i - 1].where && q.steps[i - 1].where === st.where;
-  if (st.pin && (travel || !sameSpot)) { map = { you, stars: [st.pin], others: [] }; if (you) go += (go ? " " : "") + "It's " + compass(you, st.pin) + " of you."; }
+  /* the map is for getting from A to B. If this step's spot is within ~150 map units of the last one (same building or
+     room), you're already there: no map. First steps and real journeys (300+ units on Blue Gate) get the route. */
+  const prevPin = i > 0 ? q.steps[i - 1].pin : null;
+  const journey = !prevPin || !st.pin || dist(prevPin, st.pin) > 150;
+  if (st.pin && journey) { map = { you, stars: [st.pin], others: [] }; if (you) go += (go ? " " : "") + "It's " + compass(you, st.pin) + " of you."; }
   if (!go) go = st.pin ? "It's marked on the map." : "I don't have a verified location for this step yet.";
   const last = i === q.steps.length - 1;
   const tail = last ? (q.who ? " That's the last step. Then hand it in to " + q.who + "." : " That's the last step.") : " Say done when you've finished.";
@@ -793,7 +794,7 @@ Facts: ${JSON.stringify(gFacts())}
 Recent conversation: ${JSON.stringify(gHistory.slice(-6))}
 The player just said: "${q}"
 Reply as JSON: {"command": one of "done" | "repeat" | "way out" | "hatch" | "i died" | "new raid" | "extracted" | "thanks" | "quest NAME step N" | "at PLACE" | "nearest ENEMY" | "chat" | "ignore", "reply": what you say out loud}.
-"done" = they finished the current step or arrived; your reply then gives the NEXT step. "repeat" = they want the current step again. "chat" = anything else (a question you can answer from the facts, or small talk); state doesn't change.`;
+"done" = they finished the current step, OR they say they're in or at the place the current step sends them to (for example "I'm in the room" when the step is "Head to the locker room"), OR they ask about something from the next step; your reply then gives the NEXT step. "repeat" = they want the current step again. "chat" = anything else (a question you can answer from the facts, or small talk); state doesn't change.`;
 }
 async function gCall(model, body, ms) {
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms || 6000);  /* never hang: give up and answer offline */
@@ -823,7 +824,7 @@ async function gemAnswer(q) {
   const cmd = cmdLine.toLowerCase() === "chat" ? null : aiToCommand(cmdLine);
   let a;
   if (cmd) a = answer(cmd);
-  else if (S.last && S.last.a) a = Object.assign({}, S.last.a, { keepLast: false });
+  else if (S.last && S.last.a) a = Object.assign({}, S.last.a, { keepLast: false, map: null });  /* a chat answer never brings the map back */
   else a = { show: reply.split(/(?<=[.!?])\s/)[0], say: reply };
   /* exits, hatches, enemies and places need map maths: keep Relay's own line. Everything else: Gemini's words. */
   if (!/^(way out|where's the nearest|i'm at)/i.test(cmd || "")) { a.say = reply; a.full = reply; }
@@ -833,8 +834,9 @@ async function gemAnswer(q) {
   return a;
 }
 /* the sign-off: a short, quiet burst of radio static after each answer. Made here, so it's the same every time. */
-const SQUELCH_VOL = 0.035;  /* quiet: raise or lower to taste */
+const SQUELCH_VOL = 0;  /* off: Tony found the end static annoying. 0.02 to 0.04 if it ever comes back */
 function squelch(ctx) {
+  if (!SQUELCH_VOL) return;
   try {
     const len = Math.floor(ctx.sampleRate * 0.18), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) { const env = Math.min(1, i / (len * 0.08)) * Math.pow(1 - i / len, 2); d[i] = (Math.random() * 2 - 1) * env; }
