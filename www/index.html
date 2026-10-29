@@ -123,7 +123,7 @@ body.session .cog,body.listening .cog,body.speaking .cog,body.follow .cog{displa
 <div class="app">
   <div class="top">
     <button class="word" id="word" type="button" aria-live="polite"></button>
-    <button class="close cog" id="cog" type="button" aria-label="Settings"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M421-80q-14 0-25-9t-13-23l-15-94q-19-7-40-19t-37-25l-86 40q-14 6-28 1.5T155-226L97-330q-8-13-4.5-27t15.5-23l80-59q-2-9-2.5-20.5T185-480q0-9 .5-20.5T188-521l-80-59q-12-9-15.5-23t4.5-27l58-104q8-13 22-17.5t28 1.5l86 40q16-13 37-25t40-18l15-95q2-14 13-23t25-9h118q14 0 25 9t13 23l15 94q19 7 40.5 18.5T669-710l86-40q14-6 27.5-1.5T804-734l59 104q8 13 4.5 27.5T852-580l-80 57q2 10 2.5 21.5t.5 21.5q0 10-.5 21t-2.5 21l80 58q12 8 15.5 22.5T863-330l-58 104q-8 13-22 17.5t-28-1.5l-86-40q-16 13-36.5 25.5T592-206l-15 94q-2 14-13 23t-25 9H421Zm15-60h88l14-112q33-8 62.5-25t53.5-41l106 46 40-72-94-69q4-17 6.5-33.5T715-480q0-17-2-33.5t-7-33.5l94-69-40-72-106 46q-23-26-52-43.5T538-708l-14-112h-88l-14 112q-34 7-63.5 24T306-642l-106-46-40 72 94 69q-4 17-6.5 33.5T245-480q0 17 2.5 33.5T254-413l-94 69 40 72 106-46q24 24 53.5 41t62.5 25l14 112Zm44-210q54 0 92-38t38-92q0-54-38-92t-92-38q-54 0-92 38t-38 92q0 54 38 92t92 38Zm0-130Z"/></svg></button>
+    <button class="close cog" id="cog" type="button" aria-label="Settings"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M421-80q-14 0-25-9t-13-23l-15-94q-19-7-40-19t-37-25l-86 40q-14 6-28 1.5T155-226L97-330q-8-13-4.5-27t15.5-23l80-59q-2-9-2.5-20.5T185-480q0-9 .5-20.5T188-521l-80-59q-12-9-15.5-23t4.5-27l58-104q8-13 22-17.5t28 1.5l86 40q16-13 37-25t40-18l15-95q2-14 13-23t25-9h118q14 0 25 9t13 23l15 94q19 7 40.5 18.5T669-710l86-40q14-6 27.5-1.5T804-734l59 104q8 13 4.5 27.5T852-580l-80 57q2 10 2.5 21.5t.5 21.5q0 10-.5 21t-2.5 21l80 58q12 8 15.5 22.5T863-330l-58 104q-8 13-22 17.5t-28-1.5l-86-40q-16 13-36.5 25.5T592-206l-15 94q-2 14-13 23t-25 9H421Zm59-270q54 0 92-38t38-92q0-54-38-92t-92-38q-54 0-92 38t-38 92q0 54 38 92t92 38Z"/></svg></button>
     <button class="close" id="close" type="button" aria-label="Close and start again" hidden><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M480-438 270-228q-9 9-21 9t-21-9q-9-9-9-21t9-21l210-210-210-210q-9-9-9-21t9-21q9-9 21-9t21 9l210 210 210-210q9-9 21-9t21 9q9 9 9 21t-9 21L522-480l210 210q9 9 9 21t-9 21q-9 9-21 9t-21-9L480-438Z"/></svg></button>
   </div>
   <p class="ctxline" id="ctx"></p>
@@ -724,16 +724,14 @@ function stopListening() { convoUntil = 0; try { if (CAP && CAP.SpeechRecognitio
 function bars(listeningNow) { try { if (CAP && CAP.SystemBars) CAP.SystemBars.set({ color: "#1C1E22", light: false }); } catch (e) {} }
 
 /* =================== rendering =================== */
-function setWord(txt, instr) {
+/* one type size for every screen without a map (greeting, "Go ahead.", answers, "Didn't catch that"): the greeting's.
+   Only a screen with a map steps down the instruction scale, to leave the map room. */
+function setWord(txt, instr, withMap) {
   const w = $("word");
   w.hidden = false; w.classList.remove("greet"); w.textContent = txt; w.style.fontSize = ""; w.style.lineHeight = "";
-  w.classList.toggle("instr", !!instr);
-  if (instr) { fitInstr(w); requestAnimationFrame(() => fitInstr(w)); return; }
-  requestAnimationFrame(() => {
-    const avail = w.parentElement.clientWidth - ($("close").hidden ? 0 : 52);
-    w.style.whiteSpace = "pre"; const need = w.scrollWidth; w.style.whiteSpace = "";
-    if (need > avail && avail > 0) { const size = Math.max(36, Math.floor(80 * avail / need)); w.style.fontSize = size + "px"; w.style.lineHeight = Math.round(size * .95) + "px"; }
-  });
+  w.classList.toggle("instr", !!instr); w.dataset.map = withMap ? "1" : "";
+  if (withMap) { fitInstr(w); requestAnimationFrame(() => fitInstr(w)); return; }
+  fitGreet(w); requestAnimationFrame(() => fitGreet(w));
 }
 /* type rule: short instructions are huge, longer ones step down. Aim for 40 characters, never over 60. */
 const TYPE_SCALE = [80, 72, 64, 56, 48, 44, 40, 36];
@@ -747,16 +745,26 @@ function fitInstr(w) {
   w.style.overflowWrap = "break-word"; /* last resort: a word too long for the screen */
   return 32;
 }
-window.addEventListener("resize", () => { const w = $("word"); if (w.classList.contains("greet")) fitGreet(w); else if (w.textContent) setWord(w.textContent, w.classList.contains("instr")); if (lmap) lmap.invalidateSize(); });
+window.addEventListener("resize", () => { const w = $("word"); if (w.classList.contains("greet")) fitGreet(w); else if (w.textContent) setWord(w.textContent, w.classList.contains("instr"), !!w.dataset.map); if (lmap) lmap.invalidateSize(); });
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let lmap = null;
 function clearMap() { if (lmap) { lmap.remove(); lmap = null; } }
 /* greeting: time of day, then one of six lines. A new line each launch (never the same twice running); it doesn't change while you're using the app. */
 const LINES = ["Let's get you home in one piece.", "Need a hand topside?", "Try not to get lost out there.", "What's the plan?", "Got yourself into trouble again?", "Let's make this a quick one."];
 const LINE = (() => { let last = -1; try { last = parseInt(localStorage.getItem("spottr-line") || "-1", 10); } catch (e) {} let i = Math.floor(Math.random() * (LINES.length - 1)); if (i >= last && last >= 0) i++; try { localStorage.setItem("spottr-line", String(i)); } catch (e) {} return LINES[i]; })();
+/* the one size for screens without a map, on this phone: the biggest at which "Afternoon," (the greeting's longest word) fits beside the cog */
+let BASE = 0;
+function baseSize(w) {
+  if (BASE && BASE.width === w.clientWidth) return BASE.size;
+  const m = document.createElement("span"); m.className = "word"; m.style.cssText = "position:absolute;visibility:hidden;white-space:pre;width:auto"; m.textContent = "Afternoon,";
+  document.body.appendChild(m); let size = 40;
+  for (const s of [64, 56, 52, 48, 44, 40]) { m.style.fontSize = s + "px"; if (m.getBoundingClientRect().width <= w.clientWidth) { size = s; break; } }
+  m.remove(); if (w.clientWidth > 0) BASE = { width: w.clientWidth, size }; return size;
+}
 function fitGreet(w) {
   const room = Math.max(240, $("stage").getBoundingClientRect().bottom - w.getBoundingClientRect().top - 24);
-  for (const s of [72, 64, 56, 52, 48, 44, 40]) { const lh = Math.round(s * 1.0); w.style.fontSize = s + "px"; w.style.lineHeight = lh + "px"; if (w.scrollWidth <= w.clientWidth + 1 && w.scrollHeight <= room && w.scrollHeight <= lh * 6 + 2) return; }
+  const top = baseSize(w);
+  for (const s of [64, 56, 52, 48, 44, 40].filter(x => x <= top)) {  /* the same size on every screen without a map; smaller only if a word won't fit */ const lh = Math.round(s * 1.0); w.style.fontSize = s + "px"; w.style.lineHeight = lh + "px"; if (w.scrollWidth <= w.clientWidth + 1 && w.scrollHeight <= room) return; }
 }
 function setSub() {}
 function setCtx(t) { $("ctx").textContent = t || ""; }
@@ -787,8 +795,8 @@ const IC = {
 function renderAnswer(q, a) {
   clearMap(); bars(false);
   document.body.classList.remove("listening"); document.body.classList.add("session"); $("close").hidden = false;
-  setWord(a.show || a.text || "", true); setSub(""); setCtx(a.ctx || "");
   const hasMap = a.map && (a.map.stars.length || a.map.you);
+  setWord(a.show || a.text || "", true, hasMap); setSub(""); setCtx(a.ctx || "");
   $("stage").innerHTML = hasMap ? '<div class="mapwrap"><div class="map" id="map" role="img" aria-label="' + esc(mapLabel(a.map)) + '"></div><div class="mapctl"><button type="button" id="recentre" aria-label="Recentre">' + IC.centre + '</button><button type="button" id="full" aria-label="Whole map">' + IC.whole + '</button></div><div class="mapnote" id="mapnote" hidden></div></div>' : "";
   if (hasMap) requestAnimationFrame(() => drawMap(a.map));
 }
