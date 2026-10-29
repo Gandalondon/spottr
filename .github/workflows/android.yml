@@ -29,7 +29,9 @@ jobs:
           else
             echo "No fixed key yet, using a random debug key"
           fi
-      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon
+      - run: |
+          set -o pipefail
+          chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon 2>&1 | tee ../build.log
         env:
           BUILD_NUMBER: ${{ github.run_number }}
           RELAY_KEY_PASS: ${{ secrets.RELAY_KEY_PASS }}
@@ -53,4 +55,19 @@ jobs:
           name: Spottr test build
           body: Latest test build of Spottr. Download spottr.apk on your phone and open it to install.
           files: spottr.apk
+          make_latest: false
+      # the build log and the Gemini Nano library's class list, readable without GitHub's Actions pages
+      - name: Collect build log
+        if: always()
+        run: |
+          touch build.log
+          for a in $(find ~/.gradle -name "genai-*.aar" 2>/dev/null); do echo "== $a" >> build.log; mkdir -p /tmp/aar && unzip -o -q "$a" classes.jar -d /tmp/aar && unzip -l /tmp/aar/classes.jar | awk '{print $4}' | grep class$ >> build.log; done
+      - uses: softprops/action-gh-release@v2
+        if: always()
+        with:
+          tag_name: build-log
+          name: Build log
+          body: Log of the latest build.
+          files: build.log
+          prerelease: true
           make_latest: false
