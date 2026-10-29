@@ -4,3 +4,4 @@ android/build/
 android/.gradle/
 *.apk
 archivo900.ttf
+android/app/relay-test.keystore

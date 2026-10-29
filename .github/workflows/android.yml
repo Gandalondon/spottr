@@ -1,4 +1,4 @@
-name: Build Spottr APK
+name: Build Relay APK
 on:
   push:
     branches: [main]
@@ -19,16 +19,32 @@ jobs:
           java-version: 17
       - run: npm ci
       - run: npx cap sync android
+      - name: Fixed test signing key (when the secret is set)
+        env:
+          KEY_B64: ${{ secrets.RELAY_KEYSTORE_B64 }}
+        run: if [ -n "$KEY_B64" ]; then echo "$KEY_B64" | base64 -d > android/app/relay-test.keystore; echo "Signing with the fixed test key"; else echo "No fixed key yet: random debug key"; fi
       - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          RELAY_KEY_PASS: ${{ secrets.RELAY_KEY_PASS }}
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk spottr.apk
       - uses: actions/upload-artifact@v4
         with:
           name: spottr-apk
           path: spottr.apk
+      # a numbered release per build, for Obtainium to pick up as an update
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Relay 1.0.${{ github.run_number }}
+          body: Relay test build ${{ github.run_number }}.
+          files: spottr.apk
+          make_latest: true
+      # the fixed download link, always the newest build
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: test-build
           name: Spottr test build
           body: Latest test build of Spottr. Download spottr.apk on your phone and open it to install.
           files: spottr.apk
-          make_latest: true
+          make_latest: false
