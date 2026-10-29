@@ -444,8 +444,8 @@ async function loadVoices() {
       const r = await RV.voices(); VINFO = r;
       const all = (r && r.voices) || [];
       /* first choice is no choice: Google's own default voice, the one its settings' Play button uses */
-      const good = all.filter(v => /^en-GB/i.test(v.lang) && v.installed && /-x-/.test(v.name) && !/#/.test(v.name) && (v.quality || 0) >= 400 && v.name !== r.default);
-      good.sort((a, b) => (a.network - b.network) || (b.quality - a.quality) || a.name.localeCompare(b.name));
+      const good = all.filter(v => /^en-GB/i.test(v.lang) && v.installed && /-x-/.test(v.name) && !/#/.test(v.name) && (v.quality || 0) >= 400 && v.name !== r.default);  /* includes online voices */
+      good.sort((a, b) => (b.network - a.network) || (b.quality - a.quality) || a.name.localeCompare(b.name));  /* online first: they sound natural on Tony's Pixel */
       VOICES = [{ name: "", label: "Google default" }].concat(good.map(v => ({ name: v.name, network: !!v.network, quality: v.quality || 0 })));
     } else if (window.speechSynthesis) {
       const v = speechSynthesis.getVoices();
@@ -453,6 +453,9 @@ async function loadVoices() {
       VOICES.sort((a, b) => (/google|natural|online/i.test(b.name) ? 1 : 0) - (/google|natural|online/i.test(a.name) ? 1 : 0));
     }
     if (S.voicePicked && S.voice && !VOICES.some(v => v.name === S.voice)) VOICES.unshift({ name: S.voice, label: S.voice });  /* picked from the voice list */
+    /* Tony's pick from the voice list test (29 Oct): Google's online UK voice "gba" sounds natural; Google drops to its offline voice by itself when there's no signal */
+    const PREFERRED = ["en-gb-x-gba-network", "en-gb-x-gba-local"];
+    if (!S.voicePicked) { const p = PREFERRED.find(n => VOICES.some(v => v.name === n)) || (RV ? PREFERRED[0] : ""); if (p) { if (!VOICES.some(v => v.name === p)) VOICES.unshift({ name: p, label: p }); S.voice = p; } }
     const saved = S.voice ? VOICES.findIndex(v => v.name === S.voice) : -1;  /* S.voice empty = Google default */
     voiceIdx = saved >= 0 ? saved : (VOICES.length ? 0 : -1);
     webVoice = voiceIdx >= 0 && VOICES[voiceIdx].web ? VOICES[voiceIdx].web : null;
