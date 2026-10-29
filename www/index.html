@@ -56,12 +56,10 @@ body.session .dock{height:calc(88px + env(safe-area-inset-bottom,0px))}
 .mic svg{width:56px;height:56px}
 body.session .mic{width:64px;height:64px}
 body.session .mic svg{width:36px;height:36px}
-body.listening .mic{display:none}
-body.follow .mic svg{animation:hear 1.2s ease-in-out infinite}
+body.follow .mic svg,body.listening .mic svg{animation:hear 1.2s ease-in-out infinite}  /* listening: the same mic, gently pulsing; no waveform */
 @keyframes hear{0%,100%{opacity:1}50%{opacity:.35}}
 .mic:focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:999px}
 .wave{display:none;align-items:center;justify-content:center;gap:9px;height:88px;color:var(--amber)}
-body.listening .wave{display:flex}
 .wave i{display:block;height:100%;border-radius:999px;background:currentColor;transform-origin:50% 50%}
 .wave i:nth-child(1),.wave i:nth-child(5){height:42%}
 .wave i:nth-child(2),.wave i:nth-child(4){height:70%}
@@ -98,7 +96,7 @@ body.intro .app{opacity:0}
   </div>
   <p class="ctxline" id="ctx"></p>
   <div class="stage" id="stage"></div>
-  <div class="dock"><button class="mic" id="mic" type="button" aria-label="Talk to Relay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5M8.5 21h7"/></svg></button><div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="dock"><button class="mic" id="mic" type="button" aria-label="Talk to Relay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5M8.5 21h7"/></svg></button></div>
   <div class="sr" id="vstate" aria-live="polite"></div>
 </div>
 
