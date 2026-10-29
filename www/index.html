@@ -664,6 +664,7 @@ function nothingHeard(startedAt, err) {
   else showError("Didn't catch that. Tap and try again.");
 }
 async function listen(opts) {
+  if (!(opts && opts.auto) && !listening) cancelledAt = 0;  /* a fresh tap starts clean */
   const auto = !!(opts && opts.auto);
   if (listening) { if (followMode && !auto) { followMode = false; renderListening(); } else if (!auto) stopListening(); return; }
   if (document.body.classList.contains("speaking")) { if (auto) return; stopSpeaking(); }
