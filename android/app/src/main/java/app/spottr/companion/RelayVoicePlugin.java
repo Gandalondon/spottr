@@ -4,6 +4,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
+import java.io.File;
+import java.util.HashSet;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
@@ -36,6 +39,10 @@ public class RelayVoicePlugin extends Plugin {
     private final Map<String, PluginCall> speaking = new HashMap<>();
     private int seq = 0;
     private int lastMode = -1;
+    // whole-clip playback: each answer is made into a complete audio file first, then played in one go (no stutter while it's being made)
+    private final Set<String> clips = new HashSet<>();
+    private MediaPlayer player;
+    private String playingId;
 
     @Override
     public void load() {
@@ -65,11 +72,37 @@ public class RelayVoicePlugin extends Plugin {
     private void listen() {
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             @Override public void onStart(String id) {}
-            @Override public void onDone(String id) { finish(id, true, false); }
+            @Override public void onDone(String id) {
+                boolean clip; synchronized (RelayVoicePlugin.this) { clip = clips.remove(id); }
+                if (clip) playClip(id); else finish(id, true, false);
+            }
             @Override public void onError(String id) { finish(id, false, false); }
             @Override public void onError(String id, int code) { finish(id, false, false); }
             @Override public void onStop(String id, boolean interrupted) { finish(id, true, true); }
         });
+    }
+
+    private File clipFile(String id) { return new File(getContext().getCacheDir(), id + ".wav"); }
+
+    private void playClip(String id) {
+        final File f = clipFile(id);
+        try {
+            MediaPlayer mp = new MediaPlayer();
+            mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            mp.setDataSource(f.getAbsolutePath());
+            mp.setOnCompletionListener(m -> { m.release(); synchronized (RelayVoicePlugin.this) { if (player == m) { player = null; playingId = null; } } f.delete(); finish(id, true, false); });
+            mp.setOnErrorListener((m, what, extra) -> { m.release(); synchronized (RelayVoicePlugin.this) { if (player == m) { player = null; playingId = null; } } f.delete(); finish(id, false, false); return true; });
+            mp.prepare();
+            synchronized (this) { player = mp; playingId = id; }
+            mp.start();
+        } catch (Exception e) { f.delete(); finish(id, false, false); }
+    }
+
+    private void stopClip() {
+        MediaPlayer mp; String id;
+        synchronized (this) { mp = player; id = playingId; player = null; playingId = null; clips.clear(); }
+        if (mp != null) { try { mp.stop(); } catch (Exception ignored) {} mp.release(); }
+        if (id != null) finish(id, true, true);
     }
 
     private void finish(String id, boolean ok, boolean stopped) {
@@ -169,12 +202,19 @@ public class RelayVoicePlugin extends Plugin {
         synchronized (this) { speaking.put(id, call); }
         Bundle p = new Bundle();
         p.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, id);
-        if (tts.speak(text, TextToSpeech.QUEUE_FLUSH, p, id) != TextToSpeech.SUCCESS) finish(id, false, false);
+        stopClip();
+        boolean clip = !Boolean.FALSE.equals(call.getBoolean("clip", true));
+        if (clip) {
+            tts.stop();  // drop anything still being made, so an old answer can't play after this one
+            synchronized (this) { clips.add(id); }
+            if (tts.synthesizeToFile(text, p, clipFile(id), id) != TextToSpeech.SUCCESS) { synchronized (this) { clips.remove(id); } finish(id, false, false); }
+        } else if (tts.speak(text, TextToSpeech.QUEUE_FLUSH, p, id) != TextToSpeech.SUCCESS) finish(id, false, false);
     }
 
     @PluginMethod
     public void stop(PluginCall call) {
         if (tts != null && ready) tts.stop();
+        stopClip();
         call.resolve();
     }
 

@@ -311,8 +311,10 @@ function stepAnswer(q, i, prefix) {
   const tail = last ? (q.who ? " That's the last step. Then hand it in to " + q.who + "." : " That's the last step.") : " Say done when you've finished.";
   const firstSentence = s => (s.match(/^[^.!?]*[.!?]/) || [s])[0];
   const show = st.show || (st.pin && !st.go ? st.t + "." : firstSentence(go));
-  const say = (prefix || "") + "Step " + (i + 1) + ", " + st.t.charAt(0).toLowerCase() + st.t.slice(1) + ". " + go;
-  return { show, say, full: say + tail, ctx: q.n + ", step " + (i + 1) + " of " + q.steps.length, map, text: show };
+  /* spoken as a short callout, like a radio operator; "say that again" gives the full detail */
+  const say = (prefix || "") + "Step " + (i + 1) + ". " + show;
+  const full = (prefix || "") + "Step " + (i + 1) + ", " + st.t.charAt(0).toLowerCase() + st.t.slice(1) + ". " + go + tail;
+  return { show, say, full, ctx: q.n + ", step " + (i + 1) + " of " + q.steps.length, map, text: show };
 }
 function stepIntent(t) {
   const named = findQuest(t);
@@ -396,7 +398,7 @@ function answer(raw, opts) {
     const lp = opts.general ? null : likelyPos();
     if (wantsNearest && lp && !lp.sure) {
       const best = near(lp.p, EXITS), dir = compass(lp.p, best);
-      return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + "Going by what I know, " + lp.why + ". From there, the nearest way out is " + best.n + ", to the " + dir + ". If you've moved, tell me where you are.", map: { you: Object.assign({ guess: true }, lp.p), stars: [best] }, ctx: "A guess from " + lp.short + ". Say where you are if you've moved." };
+      return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + best.n + ". Head " + dir + ". That's a guess from " + lp.short + ". Tell me if you've moved.", map: { you: Object.assign({ guess: true }, lp.p), stars: [best] }, ctx: "A guess from " + lp.short + ". Say where you are if you've moved." };
     }
     if (wantsNearest && !lp) { const a = askWhere(raw); a.say = "Where are you? Name something you can see. All four airshafts are on the map meanwhile."; a.map = { you: null, stars: EXITS }; return a; }
     if (!lp || !wantsNearest) {
@@ -406,7 +408,7 @@ function answer(raw, opts) {
     const best = near(lp.p, EXITS);
     const dir = compass(lp.p, best);
     if (dist(lp.p, best) < 80) return { show: "You're at " + best.n + ".", say: rush + "You're right at " + best.n + ". Extract there.", map: { you: null, stars: [best] } };
-    return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + "Head " + dir + " to " + best.n + ". It's your nearest way out." + (terse ? "" : " A hatch can be closer, but you'd need a Raider Hatch key."), map: { you: lp.p, stars: [best] } };
+    return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + best.n + ". Head " + dir + ".", map: { you: lp.p, stars: [best] } };
   }
   if (has(t, ["hatch"])) {
     if (psNow === "fresh") { const b = near(S.place, HATCHES); const dir = compass(S.place, b); return { show: b.n + ", " + dir + ". Needs a key.", say: "The nearest hatch is " + b.n + ", " + dir + " of you. You'll need a Raider Hatch key.", map: { you: S.place, stars: [b] } }; }
@@ -436,11 +438,11 @@ function answer(raw, opts) {
   const cq = QUESTS.find(q => q.n === S.quest);
   if (cq) {
     const st = cq.steps[S.step || 0], a = stepAnswer(cq, S.step || 0);
-    a.say = "I didn't catch that. You're still on step " + ((S.step || 0) + 1) + ", " + st.t.charAt(0).toLowerCase() + st.t.slice(1) + ". Say done when you've finished it.";
-    a.full = a.say; a.ctx = heard;
+    a.say = "Didn't catch that. Still step " + ((S.step || 0) + 1) + ". " + a.show;
+    a.full = a.say; a.ctx = heard; a.fallback = true;
     return a;
   }
-  return { show: "Say again?", say: "Sorry, say that again? You can tell me a quest and step, or ask for the way out.", ctx: heard };
+  return { show: "Say again?", say: "Sorry, say that again? You can tell me a quest and step, or ask for the way out.", ctx: heard, fallback: true };
 }
 
 /* =================== voice: native app or browser =================== */
@@ -451,7 +453,7 @@ const WebRec = window.SpeechRecognition || window.webkitSpeechRecognition;
    Only voices that are actually downloaded count, so Relay never drops back to the old robotic fallback voice.
    Offline ("local") voices come first: they start instantly. Say "change voice" to hear the next one; Relay remembers your pick. */
 const RV = CAP && CAP.RelayVoice ? CAP.RelayVoice : null;
-const RATE = 0.95;  /* a touch calmer than Google's default */
+const RATE = 1.1;  /* brisk, like a radio callout */
 let VOICES = [], voiceIdx = -1, webVoice = null;
 async function loadVoices() {
   try {
@@ -668,10 +670,65 @@ function drawMap(m) {
 }
 
 /* =================== flow =================== */
-function handle(q) {
+/* =================== Gemini Nano: understanding what the rules missed =================== */
+/* Only when the phrase rules don't recognise what was said. Gemini Nano (on the phone, free, offline) turns it into ONE
+   of Relay's own commands; Relay then answers that command from its own data, so the model can't invent routes. */
+const AI = CAP && CAP.RelayAI ? CAP.RelayAI : null;
+let aiStatus = "off";
+async function aiInit() {
+  if (!AI) return;
+  try { const r = await AI.status(); aiStatus = r.status; if (r.status === "downloadable") { AI.download(); aiStatus = "downloading"; } } catch (e) { aiStatus = "error"; }
+}
+function aiPrompt(q) {
+  const cq = QUESTS.find(x => x.n === S.quest), st = cq ? cq.steps[S.step || 0] : null;
+  const where = cq ? `The player is on the quest "${cq.n}", step ${(S.step || 0) + 1} of ${cq.steps.length}: "${st.t}".` : "The player hasn't said which quest they're on.";
+  const place = S.place ? ` They last said they were at ${S.place.n}.` : "";
+  return `You help a player of the video game ARC Raiders, on the map Blue Gate. Speech recognition heard them say:
+"${q}"
+${where}${place}
+It may be misheard, casual or said in a hurry. Reply with exactly ONE line from this list, filled in, and nothing else:
+done            (they finished the current step, arrived, or want the next step)
+repeat          (they want the current step again, are lost or didn't hear)
+way out         (they want to leave, extract, escape or need help getting out)
+hatch           (they ask about a Raider Hatch)
+i died          (they died or lost their gear)
+new raid        (they are starting or joining a new raid)
+extracted       (they got out safely)
+thanks          (they are finished talking)
+quest NAME step N   (they name a quest and maybe a step; NAME from: ${QUESTS.map(x => x.n).join("; ")})
+at PLACE        (they say where they are; PLACE from: ${PLACES.map(p => p.n.replace(/^the /, "")).join("; ")})
+nearest ENEMY   (they ask about an enemy; ENEMY from: ${ENEMY_WORDS.join(", ")})
+unknown         (none of these)`;
+}
+function aiToCommand(line) {
+  const l = (line || "").trim().split("\n")[0].toLowerCase().replace(/[."']/g, "").trim();
+  if (/^(done|repeat|way out|hatch|i died|new raid|extracted|thanks)$/.test(l)) return { done: "done", repeat: "say that again", "way out": "way out", hatch: "where's the nearest hatch", "i died": "i died", "new raid": "new raid", extracted: "extracted", thanks: "thanks" }[l];
+  let m = l.match(/^quest (.+?)(?: step (\d+))?$/);
+  if (m) { const q = QUESTS.find(x => x.n.toLowerCase() === m[1].trim()); if (q) return "I'm on " + q.n + (m[2] ? ", step " + m[2] : ""); }
+  m = l.match(/^at (.+)$/);
+  if (m) { const p = PLACES.find(x => x.n.toLowerCase().replace(/^the /, "") === m[1].trim().replace(/^the /, "")); if (p) return "I'm at " + p.n; }
+  m = l.match(/^nearest (\w+)$/);
+  if (m && ENEMY_WORDS.includes(m[1])) return "where's the nearest " + m[1];
+  return null;
+}
+async function aiAnswer(q) {
+  if (!AI || aiStatus !== "available") return null;
+  try {
+    const r = await AI.ask({ prompt: aiPrompt(q) });
+    const cmd = aiToCommand(r && r.text);
+    if (!cmd) return null;
+    const a = answer(cmd);
+    if (a.fallback) return null;
+    a.ctx = "Heard: \u201C" + q + "\u201D. Understood as: " + cmd + " (" + (r.ms || "?") + " ms)";
+    return a;
+  } catch (e) { return null; }
+}
+
+async function handle(q) {
   q = (q || "").trim(); if (!q) return;
   let a = S.pending ? resolvePending(q) : null;
   if (!a) a = answer(q);
+  if (a.fallback) { const b = await aiAnswer(q); if (b) a = b; }
   const go = () => { if (a.after) a.after(); if (a.follow === false) { convoUntil = 0; endFollow(); return; } convoUntil = Date.now() + CONVO_MS; setTimeout(() => listen({ auto: true }), 350); };
   if (a.keepLast && S.last) { renderAnswer(S.last.q, S.last.a); speak(a.say, go); return; }
   S.last = { q, a }; save();
@@ -706,7 +763,7 @@ async function openVoices() {
     });
     li.appendChild(b); ul.appendChild(li);
   });
-  $("vnote").textContent = all.length + " English voices on this phone. Tap one to hear it; the last one you tap is the one Relay uses.";
+  $("vnote").textContent = all.length + " English voices on this phone. Tap one to hear it; the last one you tap is the one Relay uses. Gemini Nano: " + aiStatus + ".";
 }
 $("vclose").addEventListener("click", () => { stopSpeaking(); $("vlist").hidden = true; loadVoices(); });
 $("word").addEventListener("click", () => {
@@ -718,6 +775,7 @@ $("close").addEventListener("click", e => { e.stopPropagation(); stopSpeaking();
 document.addEventListener("visibilitychange", () => { if (document.hidden) { convoUntil = 0; stopListening(); stopSpeaking(); endFollow(); } });
 
 loadVoices();
+aiInit();
 if (S.last) renderAnswer(S.last.q, S.last.a); else renderReady();
 /* =================== start animation =================== */
 (function intro() {
