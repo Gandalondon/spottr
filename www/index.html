@@ -206,7 +206,7 @@ const QUESTS = [
     steps: [ { t: "Destroy a Bully, its head, or 4 of its legs", go: "This one's on Pendola Pass. Relay only has Blue Gate's map so far." }, { t: "Deliver a Bully Fragmenter to Apollo", go: "The Fragmenter comes from the Bully." } ] },
   { n: "Taking Stock", al: ["taking stock"], who: "Cassio",
     steps: [ { t: "On Stella Montis, photograph the sculpture in the Atrium" }, { t: "On Spaceport, photograph a Baron Husk" }, { t: "Deliver 3 Industrial Batteries to the Nomadic Envoy" }, { t: "Ping a Bombardier on Dam, or a Bastion on Buried City" } ] },
-  { n: "Boarding the Frigate", al: ["frigate"], who: "Shani",
+  { n: "Boarding the Frigate", al: ["boarding the frigate", "frigate"], who: "Shani",
     steps: [ { t: "Find a way onto the Frigate's top" }, { t: "Damage a Hydra, a Vaporizer and a Rocketeer" } ] },
   { n: "Belly of the Beast", al: ["belly", "emperor"], who: "Shani",
     steps: [ { t: "Enter the Emperor" }, { t: "Find the source of the Emperor's power" }, { t: "Find out what happens to Harvester Payloads inside" }, { t: "Find where the Payloads are stored" }, { t: "Search 5 containers inside the Emperor" }, { t: "Take a unique piece of Emperor loot" } ] }
@@ -234,7 +234,26 @@ const near = (p, list) => list.slice().sort((a, b) => dist(p, a) - dist(p, b))[0
 const has = (t, words) => words.some(w => t.includes(w));
 const norm = raw => " " + raw.toLowerCase().replace(/\b(hey|hi|ok|okay)?\s*(relay|really|re lay|spotter|spottr)\b[,]?/g, " ").replace(/[’]/g, "'").replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ") + " ";
 function findPlace(t) { return PLACES.find(p => p.al.some(a => t.includes(a))); }
-function findQuest(t) { return QUESTS.find(q => q.al.some(a => t.includes(a))); }
+/* quest names, forgiving of mishearing: exact words first, then near matches ("home to boost" = Home to Roost).
+   A name of several words may be 2 letters off in total; a single long word 1; short single words must be exact. */
+function lev(a, b) {
+  if (a === b) return 0; const m = a.length, n = b.length; if (!m || !n) return m || n;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur.push(Math.min(prev.at(j) + 1, cur.at(j - 1) + 1, prev.at(j - 1) + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1))); prev = cur; }
+  return prev.at(n);
+}
+function fuzzyHas(t, alias) {
+  const aw = alias.split(" "), tw = t.trim().split(" "), n = aw.length;
+  const allowed = n >= 2 ? Math.max(2, Math.round(alias.length * 0.2)) : alias.length >= 6 ? 1 : 0;  /* about 1 letter in 5 */
+  if (!allowed) return false;
+  for (let i = 0; i + n <= tw.length; i++) {
+    let d = 0;
+    for (let k = 0; k < n && d <= allowed; k++) { const w = tw.at(i + k), x = aw.at(k); d += (x.length <= 3 && w !== x) ? 9 : lev(w, x); }  /* little words ("to", "a") must match exactly */
+    if (d <= allowed) return true;
+  }
+  return false;
+}
+function findQuest(t) { return QUESTS.find(q => q.al.some(a => t.includes(a))) || QUESTS.find(q => q.al.some(a => fuzzyHas(t, a))); }
 const placeAge = () => S.placeAt ? (Date.now() - S.placeAt) / 60000 : Infinity;
 function posState() { if (!S.place) return "none"; const a = placeAge(); return a < 2 ? "fresh" : a <= 10 ? "stale" : "none"; }
 /* raid memory: where you probably are, when you haven't said. Confirmed beats guessed; a guess is always said out loud as a guess.
