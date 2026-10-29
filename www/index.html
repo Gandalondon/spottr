@@ -748,9 +748,10 @@ async function aiAnswer(q) {
    own state and map, and it is told to use only the facts given, so it can't make up routes. Exit, hatch, enemy and place
    answers use Relay's own computed line, because those need map maths. If anything fails, Relay answers offline as before. */
 const GKEY_STORE = "relay-gemini-key";
-const G_MODELS = ["gemini-flash-latest", "gemini-2.5-flash"];
+/* fastest first: Flash-Lite answers in about a second; plain Flash with its "thinking" switched off as the backup */
+const G_MODELS = [{ m: "gemini-2.5-flash-lite", cfg: {} }, { m: "gemini-2.5-flash", cfg: { thinkingConfig: { thinkingBudget: 0 } } }];
 const G_TTS_MODEL = "gemini-2.5-flash-preview-tts", G_VOICE = "Charon";  /* Charon: Google's calm, informative voice */
-let gHistory = [], gTtsOk = true;
+let gHistory = [], gTtsOk = true, gLastErr = "";
 const gKey = () => { try { return localStorage.getItem(GKEY_STORE) || ""; } catch (e) { return ""; } };
 function gFacts() {
   const cq = QUESTS.find(x => x.n === S.quest);
@@ -776,8 +777,12 @@ The player just said: "${q}"
 Reply as JSON: {"command": one of "done" | "repeat" | "way out" | "hatch" | "i died" | "new raid" | "extracted" | "thanks" | "quest NAME step N" | "at PLACE" | "nearest ENEMY" | "chat", "reply": what you say out loud}.
 "done" = they finished the current step or arrived; your reply then gives the NEXT step. "repeat" = they want the current step again. "chat" = anything else (a question you can answer from the facts, or small talk); state doesn't change.`;
 }
-async function gCall(model, body) {
-  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": gKey() }, body: JSON.stringify(body) });
+async function gCall(model, body, ms) {
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms || 6000);  /* never hang: give up and answer offline */
+  let r;
+  try { r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", { method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json", "x-goog-api-key": gKey() }, body: JSON.stringify(body) }); }
+  catch (e) { throw new Error(e.name === "AbortError" ? "took too long" : "no connection to Google"); }
+  finally { clearTimeout(timer); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((j.error && j.error.message) || ("HTTP " + r.status));
   return j;
@@ -786,8 +791,8 @@ async function gemAnswer(q) {
   if (!gKey() || !navigator.onLine) return null;
   const t0 = Date.now();
   let j = null, err = "";
-  for (const m of G_MODELS) { try { j = await gCall(m, { contents: [{ role: "user", parts: [{ text: gPrompt(q) }] }], generationConfig: { temperature: 0.3, responseMimeType: "application/json" } }); break; } catch (e) { err = e.message; } }
-  if (!j) { setCtx("Gemini: " + err); return null; }
+  for (const g of G_MODELS) { try { j = await gCall(g.m, { contents: [{ role: "user", parts: [{ text: gPrompt(q) }] }], generationConfig: Object.assign({ temperature: 0.3, responseMimeType: "application/json" }, g.cfg) }, 6000); break; } catch (e) { err = g.m + ": " + e.message; } }
+  if (!j) { gLastErr = err; return null; }
   let out; try { out = JSON.parse(j.candidates[0].content.parts[0].text); } catch (e) { return null; }
   const cmdLine = (out.command || "").toString(), reply = (out.reply || "").toString().trim();
   if (!reply) return null;
@@ -808,7 +813,7 @@ let gAudio = null;
 async function gemSpeak(text) {
   if (!gKey() || !gTtsOk || !navigator.onLine) return false;
   try {
-    const j = await gCall(G_TTS_MODEL, { contents: [{ parts: [{ text: "Say calmly and clearly, like a friendly radio operator: " + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: G_VOICE } } } } });
+    const j = await gCall(G_TTS_MODEL, { contents: [{ parts: [{ text: "Say calmly and clearly, like a friendly radio operator: " + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: G_VOICE } } } } }, 7000);
     const part = j.candidates[0].content.parts.find(p => p.inlineData);
     const bin = atob(part.inlineData.data), n = bin.length / 2;
     const ctx = gAudio || (gAudio = new (window.AudioContext || window.webkitAudioContext)());
@@ -824,7 +829,7 @@ async function handle(q) {
   q = (q || "").trim(); if (!q) return;
   let a = S.pending ? resolvePending(q) : null;
   if (!a) a = answer(q);
-  if (gKey()) { setCtx("Thinking..."); const g = await gemAnswer(q); if (g) a = g; }
+  if (gKey()) { setCtx("Thinking..."); const t0 = Date.now(); const g = await gemAnswer(q); if (g) a = g; else a.ctx = "Gemini didn't answer (" + (gLastErr || "no reply") + ", " + (Date.now() - t0) + " ms), so this is Relay's offline answer."; }
   else if (a.fallback) { const b = await aiAnswer(q); if (b) a = b; }
   const go = () => { if (a.after) a.after(); if (a.follow === false) { convoUntil = 0; endFollow(); return; } convoUntil = Date.now() + CONVO_MS; setTimeout(() => listen({ auto: true }), 350); };
   if (a.keepLast && S.last) { renderAnswer(S.last.q, S.last.a); speak(a.say, go); return; }
