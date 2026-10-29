@@ -404,25 +404,26 @@ const RATE = 0.95;  /* a touch calmer than Google's default */
 let VOICES = [], voiceIdx = -1, webVoice = null;
 async function loadVoices() {
   try {
+    if (S.voiceV !== 2) { S.voice = ""; S.voiceV = 2; save(); }  /* forget picks made with earlier builds */
     if (RV) {
       const r = await RV.voices();
       const all = (r && r.voices) || [];
-      const gb = all.filter(v => /^en-GB/i.test(v.lang) && v.installed);
-      const natural = gb.filter(v => /-x-/.test(v.name));      /* Google's neural voices; "en-GB-language" is the vague catch-all */
-      VOICES = (natural.length ? natural : gb).map(v => ({ name: v.name, network: !!v.network, quality: v.quality || 0 }));
-      VOICES.sort((a, b) => (a.network - b.network) || (b.quality - a.quality) || a.name.localeCompare(b.name));
+      /* first choice is no choice: Google's own default voice, the one its settings' Play button uses */
+      const good = all.filter(v => /^en-GB/i.test(v.lang) && v.installed && /-x-/.test(v.name) && !/#/.test(v.name) && (v.quality || 0) >= 400 && v.name !== r.default);
+      good.sort((a, b) => (a.network - b.network) || (b.quality - a.quality) || a.name.localeCompare(b.name));
+      VOICES = [{ name: "", label: "Google default" }].concat(good.map(v => ({ name: v.name, network: !!v.network, quality: v.quality || 0 })));
     } else if (window.speechSynthesis) {
       const v = speechSynthesis.getVoices();
       VOICES = v.filter(x => /en-GB/i.test(x.lang)).map(x => ({ name: x.name, web: x }));
       VOICES.sort((a, b) => (/google|natural|online/i.test(b.name) ? 1 : 0) - (/google|natural|online/i.test(a.name) ? 1 : 0));
     }
-    const saved = S.voice ? VOICES.findIndex(v => v.name === S.voice) : -1;
+    const saved = S.voice ? VOICES.findIndex(v => v.name === S.voice) : -1;  /* S.voice empty = Google default */
     voiceIdx = saved >= 0 ? saved : (VOICES.length ? 0 : -1);
     webVoice = voiceIdx >= 0 && VOICES[voiceIdx].web ? VOICES[voiceIdx].web : null;
   } catch (e) {}
 }
 try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices; } catch (e) {}
-const voiceLabel = v => v ? v.name.replace(/^en-gb-x-/i, "").replace(/-(local|network)$/i, (m, k) => k === "local" ? " (offline)" : " (online)") : "";
+const voiceLabel = v => v && v.label ? v.label : v ? v.name.replace(/^en-gb-x-/i, "").replace(/-(local|network)$/i, (m, k) => k === "local" ? " (offline)" : " (online)") : "";
 function nextVoice() {
   if (VOICES.length < 2) {
     if (RV) RV.install().catch(() => {});
@@ -619,7 +620,7 @@ function handle(q) {
 $("mic").addEventListener("click", e => { e.stopPropagation(); listen(); });
 $("word").addEventListener("click", () => listen());
 document.querySelector(".app").addEventListener("click", e => { if (e.target.closest(".mapwrap,.close,.mic,.word")) return; listen(); });
-$("close").addEventListener("click", e => { e.stopPropagation(); stopSpeaking(); stopListening(); endFollow(); const v = S.voice; S = Object.assign({}, EMPTY); S.voice = v; save(); renderReady(); });
+$("close").addEventListener("click", e => { e.stopPropagation(); stopSpeaking(); stopListening(); endFollow(); const v = S.voice; S = Object.assign({}, EMPTY); S.voice = v; S.voiceV = 2; save(); renderReady(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) { convoUntil = 0; stopListening(); stopSpeaking(); endFollow(); } });
 
 loadVoices();

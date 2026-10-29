@@ -108,6 +108,8 @@ public class RelayVoicePlugin extends Plugin {
         }
         JSObject r = new JSObject();
         r.put("engine", engine);
+        Voice def = tts.getDefaultVoice();
+        r.put("default", def != null ? def.getName() : "");
         r.put("voices", list);
         call.resolve(r);
     }
@@ -123,7 +125,14 @@ public class RelayVoicePlugin extends Plugin {
         Voice chosen = null;
         Set<Voice> all = tts.getVoices();
         if (all != null && name != null && !name.isEmpty()) for (Voice v : all) if (name.equals(v.getName())) { chosen = v; break; }
-        if (chosen != null) tts.setVoice(chosen); else tts.setLanguage(Locale.UK);
+        if (chosen != null) tts.setVoice(chosen);
+        else {
+            // no pick: exactly what the Play button in Android's text-to-speech settings does, Google's own default voice for the phone's language
+            Locale sys = Locale.getDefault();
+            Voice def = tts.getDefaultVoice();
+            if (def != null && def.getLocale() != null && "en".equals(def.getLocale().getLanguage())) tts.setVoice(def);
+            else tts.setLanguage("en".equals(sys.getLanguage()) ? sys : Locale.UK);
+        }
         tts.setSpeechRate(rate);
         tts.setPitch(pitch);
         String id = "relay-" + (++seq);
