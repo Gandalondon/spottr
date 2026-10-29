@@ -748,10 +748,27 @@ async function aiAnswer(q) {
    own state and map, and it is told to use only the facts given, so it can't make up routes. Exit, hatch, enemy and place
    answers use Relay's own computed line, because those need map maths. If anything fails, Relay answers offline as before. */
 const GKEY_STORE = "relay-gemini-key";
-/* fastest first: Flash-Lite answers in about a second; plain Flash with its "thinking" switched off as the backup */
-const G_MODELS = [{ m: "gemini-2.5-flash-lite", cfg: {} }, { m: "gemini-2.5-flash", cfg: { thinkingConfig: { thinkingBudget: 0 } } }];
+/* Google retires model names often, so Relay asks which ones this key can use and picks the fastest:
+   the newest Flash-Lite, then the newest Flash. Remembered for a day. */
+let G_MODELS = null, G_TTS = null;
+async function gPickModels() {
+  if (G_MODELS) return;
+  try { const c = JSON.parse(localStorage.getItem("relay-gemini-models") || "null"); if (c && Date.now() - c.at < 864e5) { G_MODELS = c.brain; G_TTS = c.tts; return; } } catch (e) {}
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 6000);
+  let list = [];
+  try { const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { signal: ctl.signal, headers: { "x-goog-api-key": gKey() } }); const j = await r.json(); list = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes("generateContent")).map(m => m.name.replace(/^models\//, "")); }
+  catch (e) {} finally { clearTimeout(timer); }
+  const ver = n => parseFloat((n.match(/gemini-(\d+(?:\.\d+)?)/) || [0, 0])[1]);
+  const byNewest = (a, b) => ver(b) - ver(a) || a.length - b.length;
+  const plain = n => !/(tts|image|audio|live|embed|vision|thinking|exp|customtools|computer|robotics|native)/.test(n);
+  const lite = list.filter(n => /^gemini-[\d.]+-flash-lite/.test(n) && plain(n)).sort(byNewest);
+  const flash = list.filter(n => /^gemini-[\d.]+-flash(-latest|-\d+|$)/.test(n) && !/lite/.test(n) && plain(n)).sort(byNewest);
+  G_MODELS = [...lite.slice(0, 1), ...flash.slice(0, 1), "gemini-flash-lite-latest", "gemini-flash-latest"].filter((v, i, a) => v && a.indexOf(v) === i);
+  G_TTS = list.filter(n => /tts/.test(n)).sort(byNewest);
+  try { localStorage.setItem("relay-gemini-models", JSON.stringify({ at: Date.now(), brain: G_MODELS, tts: G_TTS })); } catch (e) {}
+}
 const G_TTS_MODEL = "gemini-2.5-flash-preview-tts", G_VOICE = "Charon";  /* Charon: Google's calm, informative voice */
-let gHistory = [], gTtsOk = true, gLastErr = "";
+let gHistory = [], gTtsOk = true, gLastErr = "", gUsed = "";
 const gKey = () => { try { return localStorage.getItem(GKEY_STORE) || ""; } catch (e) { return ""; } };
 function gFacts() {
   const cq = QUESTS.find(x => x.n === S.quest);
@@ -791,8 +808,13 @@ async function gemAnswer(q) {
   if (!gKey() || !navigator.onLine) return null;
   const t0 = Date.now();
   let j = null, err = "";
-  for (const g of G_MODELS) { try { j = await gCall(g.m, { contents: [{ role: "user", parts: [{ text: gPrompt(q) }] }], generationConfig: Object.assign({ temperature: 0.3, responseMimeType: "application/json" }, g.cfg) }, 6000); break; } catch (e) { err = g.m + ": " + e.message; } }
-  if (!j) { gLastErr = err; return null; }
+  await gPickModels();
+  const body = { contents: [{ role: "user", parts: [{ text: gPrompt(q) }] }], generationConfig: { temperature: 0.3, responseMimeType: "application/json" } };
+  for (const m of G_MODELS) {
+    if (Date.now() - t0 > 6000) break;
+    try { j = await gCall(m, body, 6000 - (Date.now() - t0)); gUsed = m; break; } catch (e) { err = m + ": " + e.message; }
+  }
+  if (!j) { gLastErr = err; localStorage.removeItem("relay-gemini-models"); G_MODELS = null; return null; }
   let out; try { out = JSON.parse(j.candidates[0].content.parts[0].text); } catch (e) { return null; }
   const cmdLine = (out.command || "").toString(), reply = (out.reply || "").toString().trim();
   if (!reply) return null;
@@ -803,7 +825,7 @@ async function gemAnswer(q) {
   else a = { show: reply.split(/(?<=[.!?])\s/)[0], say: reply };
   /* exits, hatches, enemies and places need map maths: keep Relay's own line. Everything else: Gemini's words. */
   if (!/^(way out|where's the nearest|i'm at)/i.test(cmd || "")) { a.say = reply; a.full = reply; }
-  a.ctx = "Heard: \u201C" + q + "\u201D \u00b7 Gemini " + (Date.now() - t0) + " ms";
+  a.ctx = "Heard: \u201C" + q + "\u201D \u00b7 " + gUsed + " " + (Date.now() - t0) + " ms";
   a.fallback = false;
   gHistory.push({ player: q, relay: a.say }); gHistory = gHistory.slice(-8);
   return a;
@@ -813,7 +835,9 @@ let gAudio = null;
 async function gemSpeak(text) {
   if (!gKey() || !gTtsOk || !navigator.onLine) return false;
   try {
-    const j = await gCall(G_TTS_MODEL, { contents: [{ parts: [{ text: "Say calmly and clearly, like a friendly radio operator: " + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: G_VOICE } } } } }, 7000);
+    await gPickModels();
+    const ttsModel = (G_TTS && G_TTS[0]) || G_TTS_MODEL;
+    const j = await gCall(ttsModel, { contents: [{ parts: [{ text: "Say calmly and clearly, like a friendly radio operator: " + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: G_VOICE } } } } }, 7000);
     const part = j.candidates[0].content.parts.find(p => p.inlineData);
     const bin = atob(part.inlineData.data), n = bin.length / 2;
     const ctx = gAudio || (gAudio = new (window.AudioContext || window.webkitAudioContext)());
