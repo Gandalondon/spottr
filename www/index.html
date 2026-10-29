@@ -254,6 +254,37 @@ const QUESTS = [
 ];
 const OTHER_MAPS = ["dam", "spaceport", "buried city", "stella montis", "pendola", "riven tides"];
 const ENEMY_WORDS = Object.keys(ENEMIES);
+/* items (Soul's Offering, Oct to 16 Nov 2026). From MetaForge's item data (metaforge.app): where each kind of item turns up,
+   matched to Blue Gate's areas by their loot type (allthings.how). Fertilizer has exact MetaForge spots on Blue Gate. */
+const FERT = [[4939,9405],[3213,5807],[3183,5816],[3208,5814],[3014,6255],[4944,9397],[3199,5830],[3008,6229],[4942,9442],[3204,5822],[3022,6259],[3025,6236],[3017,6232],[3178,5823],[4949,9449],[3000,6225]].map(([y, x]) => pt("Fertilizer", y, x));
+const AREA = n => AREAS.find(a => a.n === n);
+const ITEMS = [
+  { n: "Fertilizer", al: ["fertilizer", "fertiliser", "fertilisers", "fertilizers"], spots: FERT, note: "Patches just west and north of the Village, and by the Abandoned Housing Project." },
+  { n: "Dead Flowers", al: ["dead flowers", "dead flower", "flowers"], areas: ["Village", "Ruined Homestead", "Ancient Fort", "Raider's Refuge"], note: "Homes, shops and old ruins." },
+  { n: "Fancy Plate", al: ["fancy plate", "fancy plates", "plates"], areas: ["Ancient Fort", "Ruined Homestead"], note: "Old world ruins." },
+  { n: "Mask Fragment", al: ["mask fragment", "mask fragments", "mask"], areas: ["Ancient Fort", "Ruined Homestead"], note: "Old world ruins." },
+  { n: "Expired Respirator", al: ["expired respirator", "respirator", "respirators"], note: "Medical bags and crates, anywhere on the map." },
+  { n: "ARC Alloy", al: ["arc alloy", "arc alloys", "alloy"], areas: ["Barren Clearing"], note: "Salvage it from ARC you destroy." },
+  { n: "Advanced ARC Powercell", al: ["advanced arc powercell", "powercell", "power cell", "powercells", "power cells"], areas: ["Barren Clearing"], note: "Salvage it from ARC you destroy." },
+  { n: "Rock Salt", al: ["rock salt", "salt"], note: "No spots recorded yet. It's new, so it turns up at random." },
+  { n: "Railway Lantern", al: ["railway lantern", "lantern", "lanterns", "railway lanterns"], note: "No spots recorded yet. It's new, so it turns up at random." },
+  { n: "Insulation Roll", al: ["insulation roll", "insulation", "insulation rolls"], note: "No spots recorded yet." },
+  { n: "Remote Raider Flare", al: ["remote raider flare", "raider flare", "flares", "flare"], note: "You craft it, if you have the blueprint." }
+];
+function findItem(t) { let best = null, len = 0; for (const it of ITEMS) for (const a of it.al) if (a.length > len && t.includes(" " + a + " ")) { best = it; len = a.length; } return best; }
+function itemAnswer(it) {
+  const lp = likelyPos(), here = lp ? lp.p : null;
+  const pts = it.spots || (it.areas || []).map(AREA).filter(Boolean);
+  if (!pts.length) return { show: it.n + ": no spots yet.", say: it.n + ". " + it.note, ctx: "Soul's Offering item" };
+  if (here) {
+    const b = near(here, pts), area = it.spots ? nearestAreas(b, 1)[0] : b;
+    const where = it.spots ? "near " + area.n : area.n;
+    const far = here.rough ? "" : "about " + metres(here, b) + " metres ";
+    return { show: it.n + ": " + where + ".", say: "Closest " + it.n.toLowerCase() + " is " + where + ", " + far + compass(here, b) + " of you. " + it.note, map: { you: here.rough ? Object.assign({ guess: true }, here) : here, stars: [b] }, ctx: "Soul's Offering item" };
+  }
+  const names = it.spots ? "the Village and the Abandoned Housing Project" : (it.areas || []).join(", ").replace(/, ([^,]*)$/, " and $1");
+  return { show: it.n + ": " + (it.spots ? "Village, Housing Project." : (it.areas || []).slice(0, 2).join(", ") + "."), say: it.n + ". Try " + names + ". " + it.note + " Tell me where you are and I'll find the closest.", map: { you: null, stars: pts }, ctx: "Soul's Offering item" };
+}
 
 /* =================== state =================== */
 const EMPTY = { place: null, placeAt: null, minutesLeft: null, minutesAt: null, quest: null, step: 0, last: null, raidAt: null, pending: null, seen: null, exitSaid: null, avoid: [] };
@@ -436,7 +467,7 @@ function answer(raw, opts) {
     const a = Object.assign({}, S.last.a); a.say = a.full || a.say; return a;
   }
   if (has(t, [" new raid", "just spawned", " spawned", "dropped in", "dropping in", " new run", "starting a run", "starting a raid", "loading in"])) { S.place = null; S.pending = null; S.minutesLeft = null; S.raidAt = Date.now(); S.avoid = []; S.exitSaid = null; save(); return { show: "New raid. Good luck.", say: "New raid. Good luck. I'll ask where you are when an answer needs it." }; }
-  if (has(t, [" i died", " died ", " dead ", " killed ", "got me ", " got downed", " i'm down ", " im down "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { show: "Unlucky. Your quest's still here.", say: "Unlucky. Your quest and step are still here when you drop back in.", ctx: S.quest ? S.quest + ", step " + ((S.step || 0) + 1) : "" }; }
+  if (has(t, [" i died", " died ", " dead ", " killed ", "got me ", " got downed", " i'm down ", " im down "]) && !findItem(t)) {  /* "dead flowers" is an item, not a death */ S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { show: "Unlucky. Your quest's still here.", say: "Unlucky. Your quest and step are still here when you drop back in.", ctx: S.quest ? S.quest + ", step " + ((S.step || 0) + 1) : "" }; }
   if (has(t, ["extracted", " made it out", " got out "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { show: "Nice. Raid cleared.", say: "Nice one. Raid cleared." }; }
   if (has(t, ["where were we", "recap"])) {
     const bits = [];
@@ -521,6 +552,8 @@ function answer(raw, opts) {
     return { show: "Four hatches, marked. Needs a key.", say: "There are four Raider Hatches: Prefab, Fragrant, Lucky and Reinforced. They're marked on the map, and you'll need a key.", map: { you: null, stars: HATCHES } };
   }
 
+  const item = findItem(t);
+  if (item && !wantsExit) return itemAnswer(item);
   const enemy = ENEMY_WORDS.find(k => t.includes(k));
   if (enemy) {
     const pts = ENEMIES[enemy];

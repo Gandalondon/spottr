@@ -104,6 +104,12 @@ module.exports = [
   { set: NONE, say: ["I'm at the farm", "evac", "another one", "not that one either"], want: { near: "Next best is" } },
   { set: NONE, say: ["I'm in the village", "get me out", "too many enemies, somewhere else"], want: { near: "Next best is" } },
 
+  /* items (Soul's Offering) */
+  { set: NONE, say: "where do I find fertilizer", want: { near: "Village" } },
+  { set: NONE, say: ["I'm at the farm", "I need dead flowers"], want: { near: "Closest dead flowers is (Ruined Homestead|Ancient Fort)" } },
+  { set: AT_VILLAGE, say: "any fertiliser near me", want: { near: "Closest fertilizer is near Village" } },
+  { set: NONE, say: "where can I get rock salt", want: { near: "No spots recorded" } },
+
   /* raid events */
   { set: HTR, say: "I died", want: { died: true } },
   { set: HTR, say: "I'm dead", want: { died: true } },
