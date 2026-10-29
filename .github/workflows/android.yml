@@ -29,6 +29,8 @@ jobs:
           else
             echo "No fixed key yet, using a random debug key"
           fi
+      - name: Offline voice library (sherpa-onnx)
+        run: mkdir -p android/app/libs && curl -sSL --fail -o android/app/libs/sherpa-onnx-2.0.1.aar https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.1/sherpa-onnx-2.0.1.aar
       - run: |
           set -o pipefail
           chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon 2>&1 | tee ../build.log

@@ -72,11 +72,12 @@ body.follow .mic svg,body.listening .mic svg{animation:hear 1.2s ease-in-out inf
 body.intro .app{opacity:0}
 .app{transition:opacity .2s ease-out}
 /* voice list: every English voice the phone reports, tap one to hear it and use it */
-.vlist{position:fixed;inset:0;z-index:60;background:var(--navy);color:var(--bone);display:flex;flex-direction:column;padding:calc(24px + env(safe-area-inset-top,0px)) 24px 0}
+.vlist{position:fixed;inset:0;z-index:60;background:var(--navy);color:var(--bone);display:flex;flex-direction:column;overflow-y:auto;padding:calc(24px + env(safe-area-inset-top,0px)) 24px 0}
 .vlist[hidden]{display:none}
 .vlist h2{margin:0;font:600 40px/44px var(--body);letter-spacing:-.01em}
 .vlist .vnote{margin:12px 0 16px;color:var(--grey);font-size:16px;line-height:24px}
-.vlist ul{list-style:none;margin:0 -24px;padding:0 24px calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto;flex:1 1 auto}
+.vlist ul{list-style:none;margin:0 -24px;padding:0 24px calc(24px + env(safe-area-inset-bottom,0px));flex:none}
+.vlist ul#ovitems{padding-bottom:12px}
 .vlist li button{all:unset;box-sizing:border-box;width:100%;display:block;padding:14px 16px;margin:0 0 8px;border-radius:16px;background:#26282D;cursor:pointer}
 .vlist li button.on{background:var(--amber);color:var(--ink)}
 .vlist li .n{display:block;font-size:18px;line-height:24px;font-weight:600}
@@ -86,7 +87,8 @@ body.intro .app{opacity:0}
 .gkey input{all:unset;box-sizing:border-box;width:100%;height:48px;padding:0 16px;border-radius:12px;background:#FFFFFF;color:var(--ink);font:400 16px/48px var(--body)}
 .gkey .gkrow{display:flex;gap:8px}
 .gkey button{all:unset;cursor:pointer;height:44px;padding:0 20px;border-radius:999px;background:var(--amber);color:var(--ink);font:600 16px/44px var(--body)}
-.gkey button#gkoff{background:#26282D;color:var(--bone)}
+.gkey button#gkoff,.gkey button#vkoff{background:#26282D;color:var(--bone)}
+.gkey button[hidden]{display:none}
 .gkey p{margin:0;font-size:14px;line-height:20px}
 .vlist .vclose{position:absolute;right:12px;top:calc(16px + env(safe-area-inset-top,0px))}
 @media (prefers-reduced-motion:reduce){body{transition:none} .wave i,.mic svg{animation:none!important}}
@@ -108,6 +110,8 @@ body.intro .app{opacity:0}
   <button class="close vclose" id="vclose" type="button" aria-label="Close voices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <h2>Voices</h2>
   <p class="vnote" id="vnote">Tap a voice to hear it. The one you tap last is the one Relay uses.</p>
+  <div class="gkey" id="ov"><label>Offline voice: Supertonic. Free, and no internet needed once it's downloaded.</label><div class="gkrow"><button type="button" id="ovget">Download voice (130 MB)</button></div><p id="ovstat"></p></div>
+  <ul id="ovitems"></ul>
   <form class="gkey" id="gkey"><label for="gkin">Gemini key, for natural conversation (stays on this phone)</label><input id="gkin" type="password" autocomplete="off" placeholder="Paste your Google AI Studio key"><div class="gkrow"><button type="submit">Save</button><button type="button" id="gkoff">Remove</button></div><p id="gkstat"></p></form>
   <form class="gkey" id="vkey"><label for="vkin">Voice key, Google Cloud text-to-speech (stays on this phone)</label><input id="vkin" type="password" autocomplete="off" placeholder="Paste your Google Cloud API key"><div class="gkrow"><button type="submit">Save</button><button type="button" id="vkoff">Remove</button></div><p id="vkstat"></p></form>
   <ul id="vitems"></ul>
@@ -510,12 +514,32 @@ function voiceInfo() {
   const v = voiceIdx >= 0 ? VOICES[voiceIdx] : null;
   return "Voice: " + (VINFO && VINFO.current ? VINFO.current : voiceLabel(v) || "?") + (VINFO && VINFO.currentQuality ? ", quality " + VINFO.currentQuality : "") + (VINFO && VINFO.currentNetwork ? ", online" : "") + ". Audio before last answer: " + (lastMode == null ? "?" : (modes[lastMode] || lastMode)) + ".";
 }
+/* Offline voice: Supertonic 3 on the phone (sherpa-onnx). Used first once downloaded, unless Tony switches back to Google voices.
+   Voices 0 to 4 are female (F1 to F5), 5 to 9 male (M1 to M5). firstMs = how long before the first words play. */
+const OV = CAP && CAP.RelayOfflineVoice ? CAP.RelayOfflineVoice : null;
+const OV_VOICES = [5, 6, 7, 8, 9, 0, 1, 2, 3, 4].map(sid => ({ sid, label: (sid >= 5 ? "Male " + (sid - 4) : "Female " + (sid + 1)) }));
+const OV_SPEED = 1.05;
+let ovInstalled = false, ovLast = null;
+const ovOn = () => OV && ovInstalled && !S.ovOff;
+async function ovInit() {
+  if (!OV) return;
+  try { const r = await OV.status(); ovInstalled = !!r.installed; if (ovInstalled) OV.warm().catch(() => {}); } catch (e) {}
+}
+const secs = ms => (ms / 1000).toFixed(1) + " s";
+function ovSpeak(s, fin, onTimes) {
+  OV.speak({ text: s, sid: S.ovSid == null ? 5 : S.ovSid, speed: OV_SPEED }).then(r => {
+    if (r && r.error) { setCtx("Offline voice: " + r.error.slice(0, 80) + ". Using Google's voice."); speakPhone(s, fin); return; }
+    ovLast = r; if (onTimes) onTimes(r);
+    fin(!(r && r.stopped));
+  }).catch(() => speakPhone(s, fin));
+}
 let speakId = 0;
 function speak(s, done) {
   if (!s) { if (done) done(); return; }
   const id = ++speakId;
   const fin = ok => { if (id !== speakId) return; setVoiceState("idle"); if (ok && done) done(); };
   setVoiceState("speaking");
+  if (ovOn()) { ovSpeak(s, fin); return; }
   if (vKey() || (gKey() && gTtsOk)) {
     (async () => {
       let r = vKey() && cloudOk ? await cloudSpeak(s) : false;
@@ -534,7 +558,7 @@ function speakPhone(s, fin) {
   }
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(s); if (webVoice) u.voice = webVoice; u.lang = "en-GB"; u.rate = RATE; u.onend = () => fin(true); u.onerror = () => fin(false); speechSynthesis.speak(u); } catch (e) { fin(false); }
 }
-function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (gemSpeak.stop) gemSpeak.stop(); } catch (e) {} try { if (RV) RV.stop(); else speechSynthesis.cancel(); } catch (e) {} }
+function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (gemSpeak.stop) gemSpeak.stop(); } catch (e) {} try { if (OV) OV.stop(); } catch (e) {} try { if (RV) RV.stop(); else speechSynthesis.cancel(); } catch (e) {} }
 
 /* =================== listening =================== */
 /* Conversation: after every answer Relay keeps listening, re-arming the microphone each time the phone's recogniser
@@ -912,7 +936,7 @@ $("mic").addEventListener("click", e => { e.stopPropagation(); listen(); });
 /* tapping the greeting opens the voice list: every English voice the phone reports, each playable, no microphone involved */
 const TEST_LINE = "You need to get to the locker room. Take the stairs on your right, then the door is straight ahead.";
 async function openVoices() {
-  const box = $("vlist"), ul = $("vitems"); box.hidden = false; ul.innerHTML = ""; gkStatus(); vkStatus();
+  const box = $("vlist"), ul = $("vitems"); box.hidden = false; ul.innerHTML = ""; gkStatus(); vkStatus(); ovRender();
   let all = [];
   try { const r = RV ? await RV.voices() : null; all = (r && r.voices) || []; } catch (e) {}
   const fixed = [{ name: "@system", rate: 1.0, label: "Test A: settings voice, normal speed", meta: "Speed 1.0 instead of 0.95" },
@@ -926,10 +950,10 @@ async function openVoices() {
   rows.forEach(v => {
     const li = document.createElement("li"), b = document.createElement("button"); b.type = "button";
     b.innerHTML = '<span class="n"></span><span class="m"></span>'; b.querySelector(".n").textContent = v.label; b.querySelector(".m").textContent = v.meta;
-    if ((S.voice || "") === v.name && S.voicePicked) b.classList.add("on");
+    if ((S.voice || "") === v.name && S.voicePicked && (S.ovOff || !ovInstalled)) b.classList.add("on");
     b.addEventListener("click", () => {
-      ul.querySelectorAll("button.on").forEach(x => x.classList.remove("on")); b.classList.add("on");
-      S.voice = v.name; S.voicePicked = true; S.voiceV = 2; S.voiceRate = v.rate || null; S.voicePlain = !!v.plain; save();
+      document.querySelectorAll("#vlist button.on").forEach(x => x.classList.remove("on")); b.classList.add("on");
+      S.voice = v.name; S.voicePicked = true; S.voiceV = 2; S.voiceRate = v.rate || null; S.voicePlain = !!v.plain; S.ovOff = true; save();
       VOICES = [{ name: v.name, label: v.label }]; voiceIdx = 0;
       speak(TEST_LINE);
     });
@@ -937,22 +961,56 @@ async function openVoices() {
   });
   $("vnote").textContent = all.length + " English voices on this phone. Tap one to hear it; the last one you tap is the one Relay uses. Gemini Nano: " + aiStatus + ".";
 }
+/* offline voice section of the voices screen */
+let ovPoll = 0;
+async function ovRender() {
+  const box = $("ov"), ul = $("ovitems"), st = $("ovstat"), get = $("ovget");
+  if (!OV) { box.hidden = true; ul.innerHTML = ""; return; }
+  let r = {}; try { r = await OV.status(); } catch (e) {}
+  ovInstalled = !!r.installed;
+  get.hidden = ovInstalled || /^(downloading|unpacking)/.test(r.state || "");
+  if (r.state === "downloading") st.textContent = "Downloading: " + r.progress + "%. Keep Relay open.";
+  else if (r.state === "unpacking") st.textContent = "Nearly there: unpacking.";
+  else if (/^failed/.test(r.state || "")) { st.textContent = "Download failed (" + r.state.slice(8, 80) + "). Try again on Wi-Fi."; get.hidden = false; }
+  else if (!ovInstalled) st.textContent = "Not downloaded. Use Wi-Fi: it's 130 MB, once.";
+  else st.textContent = (S.ovOff ? "Downloaded. Relay is using a Google voice below; tap a Supertonic voice to switch back." : "Relay speaks with the highlighted voice. Tap one to hear it.") + (ovLast && ovLast.firstMs >= 0 ? " Last answer started speaking after " + secs(ovLast.firstMs) + "." : "");
+  clearTimeout(ovPoll);
+  if (/^(downloading|unpacking)/.test(r.state || "") && !$("vlist").hidden) ovPoll = setTimeout(ovRender, 1000);
+  if (/^(downloading|unpacking)/.test(r.state || "") === false && ovInstalled && !r.loaded) OV.warm().catch(() => {});
+  ul.innerHTML = "";
+  if (!ovInstalled) return;
+  OV_VOICES.forEach(v => {
+    const li = document.createElement("li"), b = document.createElement("button"); b.type = "button";
+    b.innerHTML = '<span class="n"></span><span class="m"></span>'; b.querySelector(".n").textContent = "Supertonic " + v.label; b.querySelector(".m").textContent = "Offline";
+    if (!S.ovOff && (S.ovSid == null ? 5 : S.ovSid) === v.sid) b.classList.add("on");
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#vlist button.on").forEach(x => x.classList.remove("on")); b.classList.add("on");
+      S.ovSid = v.sid; S.ovOff = false; save();
+      b.querySelector(".m").textContent = "Making the voice...";
+      stopSpeaking(); const id = ++speakId; setVoiceState("speaking");
+      ovSpeak(TEST_LINE, () => { if (id === speakId) setVoiceState("idle"); }, t => { b.querySelector(".m").textContent = "Started speaking after " + secs(t.firstMs) + (t.loadMs > 0 ? " \u00b7 voice loaded in " + secs(t.loadMs) : ""); });
+    });
+    li.appendChild(b); ul.appendChild(li);
+  });
+}
+$("ovget").addEventListener("click", async () => { try { await OV.download(); } catch (e) {} ovRender(); });
 function gkStatus() { const k = gKey(); $("gkstat").textContent = k ? "Gemini mode on: natural replies and Gemini's voice (needs internet)." : "Gemini mode off: Relay works offline with the phone's voice."; $("gkin").value = ""; }
 $("gkey").addEventListener("submit", e => { e.preventDefault(); const v = $("gkin").value.trim(); if (v.length < 20) { $("gkstat").textContent = "That doesn't look like a key."; return; } try { localStorage.setItem(GKEY_STORE, v); } catch (er) {} gTtsOk = true; gkStatus(); });
 function vkStatus() { $("vkstat").textContent = vKey() ? "Voice key saved: Google Cloud UK voice (needs internet)." : "No voice key: Gemini's voice if available, otherwise the phone's."; $("vkin").value = ""; }
 $("vkey").addEventListener("submit", e => { e.preventDefault(); const v = $("vkin").value.trim(); if (v.length < 20) { $("vkstat").textContent = "That doesn't look like a key."; return; } try { localStorage.setItem(VKEY_STORE, v); } catch (er) {} cloudOk = true; vkStatus(); speak("Voice check. Relay standing by."); });
 $("vkoff").addEventListener("click", () => { try { localStorage.removeItem(VKEY_STORE); } catch (er) {} vkStatus(); });
 $("gkoff").addEventListener("click", () => { try { localStorage.removeItem(GKEY_STORE); } catch (er) {} gkStatus(); });
-$("vclose").addEventListener("click", () => { stopSpeaking(); $("vlist").hidden = true; loadVoices(); });
+$("vclose").addEventListener("click", () => { stopSpeaking(); clearTimeout(ovPoll); $("vlist").hidden = true; loadVoices(); });
 $("word").addEventListener("click", () => {
   if ($("word").classList.contains("greet")) { openVoices(); return; }
   listen();
 });
 document.querySelector(".app").addEventListener("click", e => { if (e.target.closest(".mapwrap,.close,.mic,.word")) return; listen(); });
-$("close").addEventListener("click", e => { e.stopPropagation(); stopSpeaking(); stopListening(); endFollow(); const v = S.voice; S = Object.assign({}, EMPTY); S.voice = v; S.voiceV = 2; S.voicePicked = !!v; save(); renderReady(); });
+$("close").addEventListener("click", e => { e.stopPropagation(); stopSpeaking(); stopListening(); endFollow(); const v = S.voice, ovSid = S.ovSid, ovOff = S.ovOff; S = Object.assign({}, EMPTY); S.voice = v; S.voiceV = 2; S.voicePicked = !!v; S.ovSid = ovSid; S.ovOff = ovOff; save(); renderReady(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) { convoUntil = 0; stopListening(); stopSpeaking(); endFollow(); } });
 
 loadVoices();
+ovInit();
 aiInit();
 if (S.last) renderAnswer(S.last.q, S.last.a); else renderReady();
 /* =================== start animation =================== */
