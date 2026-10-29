@@ -173,9 +173,10 @@ public class RelayOfflineVoicePlugin extends Plugin {
     @PluginMethod
     public void speak(PluginCall call) {
         final String text = call.getString("text", "");
-        final int sid = call.getInt("sid", 5);
-        final float speed = call.getFloat("speed", 1.05f);
-        final int steps = call.getInt("steps", 5);
+        // read numbers loosely: JavaScript sends 1 (whole) or 1.15 (decimal), and either must work
+        final int sid = (int) call.getData().optDouble("sid", 5);
+        final float speed = (float) call.getData().optDouble("speed", 1.0);
+        final int steps = (int) call.getData().optDouble("steps", 5);
         if (!installed()) { call.reject("not installed"); return; }
         final int my = ++speakSeq;
         stopTrack();

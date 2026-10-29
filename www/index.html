@@ -1080,15 +1080,28 @@ function renderSettings() {
   SPEEDS.forEach(sp => {
     const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(CFG.speed === sp.v));
     b.textContent = sp.l; if (CFG.speed === sp.v) b.classList.add("on");
-    b.addEventListener("click", () => { CFG.speed = sp.v; saveCfg(); renderSettings(); preview(); });
+    b.addEventListener("click", () => { CFG.speed = sp.v; saveCfg(); renderSettings(); preview(null, t => { $("setvmeta").textContent = t; }); });
     box.appendChild(b);
   });
   const ver = $("ver"); ver.textContent = "Relay " + APP_VERSION;
   $("setplay").innerHTML = PLAY_ICON; $("setplay").hidden = !ovInstalled;
 }
 $("cog").addEventListener("click", e => { e.stopPropagation(); openSettings(); });
-function preview() { stopSpeaking(); const id = ++speakId; setVoiceState("speaking"); const fin = () => { if (id === speakId) setVoiceState("idle"); }; if (ovOn()) ovSpeak(TEST_LINE, fin); else speakPhone(TEST_LINE, fin); }
-$("setplay").addEventListener("click", e => { e.stopPropagation(); preview(); });
+/* voice samples: no separate stop first (the voice engine replaces whatever it was saying), and report what happened */
+let lastPreview = "";
+function preview(sid, note) {
+  const id = ++speakId; try { if (RV) RV.stop(); } catch (e) {}
+  setVoiceState("speaking"); if (note) note("Playing\u2026");
+  const fin = () => { if (id === speakId) setVoiceState("idle"); };
+  if (!(OV && ovInstalled)) { speakPhone(TEST_LINE, fin); if (note) note("Phone voice (offline voice not downloaded)"); return; }
+  OV.speak({ text: TEST_LINE, sid: sid == null ? CFG.sid : sid, speed: CFG.speed }).then(r => {
+    lastPreview = JSON.stringify(r || {});
+    if (r && r.error) { if (note) note("Couldn't play: " + String(r.error).slice(0, 60)); speakPhone(TEST_LINE, fin); return; }
+    if (note) note(r && r.stopped ? "Stopped" : r && r.firstMs >= 0 ? "Started speaking after " + secs(r.firstMs) : "No sound came back");
+    fin();
+  }).catch(e => { lastPreview = "rejected: " + (e && e.message || e); if (note) note("Couldn't play: " + String(e && e.message || e).slice(0, 60)); speakPhone(TEST_LINE, fin); });
+}
+$("setplay").addEventListener("click", e => { e.stopPropagation(); preview(null, t => { $("setvmeta").textContent = t; }); });
 $("setback").addEventListener("click", () => { stopSpeaking(); show("settings", false); renderReady(); });
 $("setvoice").addEventListener("click", () => { show("vlist", true); ovRender(); });
 $("vback").addEventListener("click", () => { stopSpeaking(); clearTimeout(ovPoll); show("vlist", false); renderSettings(); });
@@ -1106,6 +1119,7 @@ async function openDebug() {
     "Voice: " + voiceName(CFG.sid) + ", speed " + CFG.speed + "x" + (CFG.off ? ", switched off after a crash: " + CFG.crash : ""),
     "Last answer: " + (ovLast ? "started speaking after " + secs(ovLast.firstMs) + ", finished after " + secs(ovLast.totalMs) : "none yet"),
     "Voice load error: " + (ovWarmErr || "none"),
+    "Last voice sample: " + (lastPreview || "none yet"),
     "Gemini Nano: " + aiStatus,
     "Last close: " + (st.lastExit || ovExit || "unknown"),
     "Phone voice fallback: " + (VINFO && VINFO.current ? VINFO.current : "Google default")
@@ -1142,8 +1156,7 @@ async function ovRender() {
       ul.querySelectorAll("button.on").forEach(x => { x.classList.remove("on"); x.removeAttribute("aria-current"); x.querySelector(".m").textContent = "Tap to hear"; });
       b.classList.add("on"); b.setAttribute("aria-current", "true"); b.querySelector(".m").textContent = "Selected";
       CFG.sid = v.sid; CFG.off = false; CFG.crash = ""; saveCfg(); box.hidden = true;
-      stopSpeaking(); const id = ++speakId; setVoiceState("speaking");
-      ovSpeak(TEST_LINE, () => { if (id === speakId) setVoiceState("idle"); });
+      preview(v.sid, t => { b.querySelector(".m").textContent = t; });
     });
     li.appendChild(b); li.appendChild(pb); ul.appendChild(li);
   });
