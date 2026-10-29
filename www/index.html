@@ -280,10 +280,10 @@ function itemAnswer(it) {
     const b = near(here, pts), area = it.spots ? nearestAreas(b, 1)[0] : b;
     const where = it.spots ? "near " + area.n : area.n;
     const far = here.rough ? "" : "about " + metres(here, b) + " metres ";
-    return { show: it.n + ": " + where + ".", say: "Closest " + it.n.toLowerCase() + " is " + where + ", " + far + compass(here, b) + " of you. " + it.note, map: { you: here.rough ? Object.assign({ guess: true }, here) : here, stars: [b] }, ctx: "Soul's Offering item" };
+    return { show: it.n + ": " + where + ".", say: "Nearest " + it.n.toLowerCase() + ": " + where + ", " + far + compass(here, b) + " of you. " + (it.spots ? "" : it.note), map: { you: here.rough ? Object.assign({ guess: true }, here) : here, stars: [b] }, ctx: "Soul's Offering item" };
   }
   const names = it.spots ? "the Village and the Abandoned Housing Project" : (it.areas || []).join(", ").replace(/, ([^,]*)$/, " and $1");
-  return { show: it.n + ": " + (it.spots ? "Village, Housing Project." : (it.areas || []).slice(0, 2).join(", ") + "."), say: it.n + ". Try " + names + ". " + it.note + " Tell me where you are and I'll find the closest.", map: { you: null, stars: pts }, ctx: "Soul's Offering item" };
+  return { show: it.n + ": " + (it.spots ? "Village, Housing Project." : (it.areas || []).slice(0, 2).join(", ") + "."), say: it.n + ". Try " + names + ". " + (it.spots ? "" : it.note + " ") + "Tell me where you are and I'll find the nearest.", map: { you: null, stars: pts }, ctx: "Soul's Offering item" };
 }
 
 /* =================== state =================== */

@@ -106,8 +106,8 @@ module.exports = [
 
   /* items (Soul's Offering) */
   { set: NONE, say: "where do I find fertilizer", want: { near: "Village" } },
-  { set: NONE, say: ["I'm at the farm", "I need dead flowers"], want: { near: "Closest dead flowers is (Ruined Homestead|Ancient Fort)" } },
-  { set: AT_VILLAGE, say: "any fertiliser near me", want: { near: "Closest fertilizer is near Village" } },
+  { set: NONE, say: ["I'm at the farm", "I need dead flowers"], want: { near: "Nearest dead flowers: (Ruined Homestead|Ancient Fort)" } },
+  { set: AT_VILLAGE, say: "any fertiliser near me", want: { near: "Nearest fertilizer: near Village" } },
   { set: NONE, say: "where can I get rock salt", want: { near: "No spots recorded" } },
 
   /* raid events */
