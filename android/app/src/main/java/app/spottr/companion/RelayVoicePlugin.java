@@ -137,7 +137,13 @@ public class RelayVoicePlugin extends Plugin {
         Set<Voice> all = tts.getVoices();
         if (all != null && name != null && !name.isEmpty()) for (Voice v : all) if (name.equals(v.getName())) { chosen = v; break; }
         if (chosen != null) tts.setVoice(chosen);
-        else {
+        else if ("@system".equals(name)) {
+            // exactly what the Play button in Android's text-to-speech settings does: name only the phone's language, let Google choose
+            Locale sys = Locale.getDefault();
+            tts.setLanguage(sys);
+        } else if ("@uk".equals(name)) {
+            tts.setLanguage(Locale.UK);
+        } else {
             // no pick: exactly what the Play button in Android's text-to-speech settings does, Google's own default voice for the phone's language
             Locale sys = Locale.getDefault();
             Voice def = tts.getDefaultVoice();
