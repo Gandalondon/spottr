@@ -519,11 +519,15 @@ function voiceInfo() {
 const OV = CAP && CAP.RelayOfflineVoice ? CAP.RelayOfflineVoice : null;
 const OV_VOICES = [5, 6, 7, 8, 9, 0, 1, 2, 3, 4].map(sid => ({ sid, label: (sid >= 5 ? "Male " + (sid - 4) : "Female " + (sid + 1)) }));
 const OV_SPEED = 1.05;
-let ovInstalled = false, ovLast = null;
+let ovInstalled = false, ovLast = null, ovExit = "", ovWarmErr = "";
 const ovOn = () => OV && ovInstalled && !S.ovOff;
 async function ovInit() {
   if (!OV) return;
-  try { const r = await OV.status(); ovInstalled = !!r.installed; if (ovInstalled) OV.warm().catch(() => {}); } catch (e) {}
+  try {
+    const r = await OV.status(); ovInstalled = !!r.installed; ovExit = r.lastExit || "";
+    if (r.crashed) { S.ovOff = true; S.ovCrash = r.crashed + " (" + ovExit + ")"; save(); setCtx("The offline voice closed Relay while " + r.crashed + ". Back on Google's voice for now."); return; }
+    if (ovInstalled && !S.ovOff) OV.warm().then(w => { if (w && w.error) ovWarmErr = w.error; }).catch(() => {});
+  } catch (e) {}
 }
 const secs = ms => (ms / 1000).toFixed(1) + " s";
 function ovSpeak(s, fin, onTimes) {
@@ -959,7 +963,7 @@ async function openVoices() {
     });
     li.appendChild(b); ul.appendChild(li);
   });
-  $("vnote").textContent = all.length + " English voices on this phone. Tap one to hear it; the last one you tap is the one Relay uses. Gemini Nano: " + aiStatus + ".";
+  $("vnote").textContent = all.length + " English voices on this phone. Tap one to hear it; the last one you tap is the one Relay uses. Gemini Nano: " + aiStatus + "." + (ovExit ? " Last close: " + ovExit.slice(0, 200) : "");
 }
 /* offline voice section of the voices screen */
 let ovPoll = 0;
@@ -973,7 +977,8 @@ async function ovRender() {
   else if (r.state === "unpacking") st.textContent = "Nearly there: unpacking.";
   else if (/^failed/.test(r.state || "")) { st.textContent = "Download failed (" + r.state.slice(8, 80) + "). Try again on Wi-Fi."; get.hidden = false; }
   else if (!ovInstalled) st.textContent = "Not downloaded. Use Wi-Fi: it's 130 MB, once.";
-  else st.textContent = (S.ovOff ? "Downloaded. Relay is using a Google voice below; tap a Supertonic voice to switch back." : "Relay speaks with the highlighted voice. Tap one to hear it.") + (ovLast && ovLast.firstMs >= 0 ? " Last answer started speaking after " + secs(ovLast.firstMs) + "." : "");
+  else if (S.ovCrash && S.ovOff) st.textContent = "It closed Relay while " + S.ovCrash + ". Tap a Supertonic voice to try again.";
+  else st.textContent = (ovWarmErr ? "Voice didn't load: " + ovWarmErr.slice(0, 120) + ". " : "") + (S.ovOff ? "Downloaded. Relay is using a Google voice below; tap a Supertonic voice to switch back." : "Relay speaks with the highlighted voice. Tap one to hear it.") + (ovLast && ovLast.firstMs >= 0 ? " Last answer started speaking after " + secs(ovLast.firstMs) + "." : "");
   clearTimeout(ovPoll);
   if (/^(downloading|unpacking)/.test(r.state || "") && !$("vlist").hidden) ovPoll = setTimeout(ovRender, 1000);
   if (/^(downloading|unpacking)/.test(r.state || "") === false && ovInstalled && !r.loaded) OV.warm().catch(() => {});
@@ -985,7 +990,7 @@ async function ovRender() {
     if (!S.ovOff && (S.ovSid == null ? 5 : S.ovSid) === v.sid) b.classList.add("on");
     b.addEventListener("click", () => {
       document.querySelectorAll("#vlist button.on").forEach(x => x.classList.remove("on")); b.classList.add("on");
-      S.ovSid = v.sid; S.ovOff = false; save();
+      S.ovSid = v.sid; S.ovOff = false; S.ovCrash = ""; save();
       b.querySelector(".m").textContent = "Making the voice...";
       stopSpeaking(); const id = ++speakId; setVoiceState("speaking");
       ovSpeak(TEST_LINE, () => { if (id === speakId) setVoiceState("idle"); }, t => { b.querySelector(".m").textContent = "Started speaking after " + secs(t.firstMs) + (t.loadMs > 0 ? " \u00b7 voice loaded in " + secs(t.loadMs) : ""); });

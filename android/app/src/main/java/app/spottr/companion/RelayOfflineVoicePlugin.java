@@ -48,6 +48,37 @@ public class RelayOfflineVoicePlugin extends Plugin {
     private volatile AudioTrack track;
     private volatile long loadMs = -1;
 
+    // crash guard: a marker file is written before each native step and removed after. If Relay is killed mid-step,
+    // the next start finds the marker and Relay switches back to Google's voice.
+    private File marker() { return new File(getContext().getFilesDir(), "ov-busy"); }
+    private void mark(String step) { try (FileOutputStream o = new FileOutputStream(marker())) { o.write(step.getBytes()); } catch (Throwable ignored) {} }
+    private void unmark() { marker().delete(); }
+    private volatile String startCrash = "";
+    @Override
+    public void load() {
+        File m = marker();  // read once at start: a marker left over means the last run died mid-step
+        if (m.exists()) {
+            try { startCrash = new String(java.nio.file.Files.readAllBytes(m.toPath())); } catch (Throwable e) { startCrash = "unknown"; }
+            m.delete();
+        }
+    }
+    private String crashed() { String c = startCrash; startCrash = ""; return c; }
+
+    /** why Android last closed Relay (crash, native crash, low memory...), for the voices screen */
+    private String lastExit() {
+        if (android.os.Build.VERSION.SDK_INT < 30) return "";
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) getContext().getSystemService(android.content.Context.ACTIVITY_SERVICE);
+            java.util.List<android.app.ApplicationExitInfo> l = am.getHistoricalProcessExitReasons(getContext().getPackageName(), 0, 1);
+            if (l.isEmpty()) return "";
+            android.app.ApplicationExitInfo x = l.get(0);
+            int r = x.getReason();
+            String why = r == android.app.ApplicationExitInfo.REASON_CRASH ? "crash" : r == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE ? "native crash" : r == android.app.ApplicationExitInfo.REASON_ANR ? "not responding" : r == android.app.ApplicationExitInfo.REASON_LOW_MEMORY ? "low memory" : r == android.app.ApplicationExitInfo.REASON_USER_REQUESTED ? "closed by you" : r == android.app.ApplicationExitInfo.REASON_USER_STOPPED ? "stopped by you" : r == android.app.ApplicationExitInfo.REASON_EXIT_SELF ? "normal exit" : "reason " + r;
+            long ago = (System.currentTimeMillis() - x.getTimestamp()) / 60000;
+            return why + ", " + ago + " min ago" + (x.getDescription() != null ? ": " + x.getDescription() : "");
+        } catch (Throwable e) { return "unknown"; }
+    }
+
     private File dir() { return new File(getContext().getFilesDir(), NAME); }
     private boolean installed() { return new File(dir(), "ok").exists(); }
 
@@ -58,6 +89,8 @@ public class RelayOfflineVoicePlugin extends Plugin {
         r.put("loaded", tts != null);
         r.put("loadMs", loadMs);
         r.put("state", state);
+        r.put("crashed", crashed());
+        r.put("lastExit", lastExit());
         r.put("progress", APPROX_BYTES > 0 ? Math.min(100, (int) (got * 100 / APPROX_BYTES)) : 0);
         call.resolve(r);
     }
@@ -118,7 +151,9 @@ public class RelayOfflineVoicePlugin extends Plugin {
         OfflineTtsConfig cfg = new OfflineTtsConfig();
         cfg.setModel(m);
         long t0 = System.currentTimeMillis();
+        mark("loading the voice");
         tts = new OfflineTts(null, cfg);
+        unmark();
         loadMs = System.currentTimeMillis() - t0;
         return tts;
     }
@@ -129,7 +164,7 @@ public class RelayOfflineVoicePlugin extends Plugin {
         if (!installed()) { call.resolve(); return; }
         work.execute(() -> {
             JSObject r = new JSObject();
-            try { engine(); r.put("loadMs", loadMs); } catch (Throwable e) { r.put("error", String.valueOf(e.getMessage())); }
+            try { engine(); r.put("loadMs", loadMs); } catch (Throwable e) { unmark(); r.put("error", e.getClass().getSimpleName() + ": " + e.getMessage()); }
             call.resolve(r);
         });
     }
@@ -159,6 +194,7 @@ public class RelayOfflineVoicePlugin extends Plugin {
                     .setBufferSizeInBytes(Math.max(min, rate * 4))
                     .setTransferMode(AudioTrack.MODE_STREAM).build();
                 track = at;
+                mark("speaking");
                 at.play();
                 final AudioTrack out = at;
                 GenerationConfig g = new GenerationConfig();
@@ -184,8 +220,9 @@ public class RelayOfflineVoicePlugin extends Plugin {
                 while (my == speakSeq && out.getPlaybackHeadPosition() < written[0] && System.currentTimeMillis() < end) Thread.sleep(30);
                 r.put("stopped", my != speakSeq);
             } catch (Throwable ex) {
-                r.put("error", String.valueOf(ex.getMessage()));
+                r.put("error", ex.getClass().getSimpleName() + ": " + ex.getMessage());
             } finally {
+                unmark();
                 if (at != null) { try { at.stop(); } catch (Throwable ignored) {} at.release(); }
                 if (track == at) track = null;
             }
