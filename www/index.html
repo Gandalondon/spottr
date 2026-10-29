@@ -51,11 +51,18 @@ body.listening .close{color:var(--amber)}
 .leaflet-control-attribution a{color:var(--bone)!important}
 /* bottom of the screen: a yellow mic to talk (big on home, small on answers). The yellow soundwave appears only on the listening screen. */
 .dock{flex:none;height:calc(104px + env(safe-area-inset-bottom,0px));  /* the same height on every screen, so the mic never moves */padding-bottom:env(safe-area-inset-bottom,0px);display:flex;align-items:center;justify-content:center}
-.mic{all:unset;cursor:pointer;display:flex;align-items:center;justify-content:center;width:88px;height:88px;color:var(--amber)}
-.mic svg{width:48px;height:48px}  /* one size on every screen: home, listening and answers */
-body.follow .mic svg,body.listening .mic svg{animation:hear 1.2s ease-in-out infinite}  /* listening: the same mic, gently pulsing; no waveform */
-@keyframes hear{0%,100%{opacity:1}50%{opacity:.35}}
-.mic:focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:999px}
+/* the talk button (option C, 29 Oct): yellow circle with a dark mic. Listening: waveform icon and a soft halo that breathes.
+   Speaking: outlined circle with a yellow waveform. Same size and place on every screen. */
+.mic{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;background:var(--amber);color:var(--ink);border:2px solid var(--amber);transition:background .15s,color .15s,box-shadow .2s}
+.mic svg{width:32px;height:32px}
+.mic .wv{display:none}
+body.listening .mic,body.follow:not(.speaking) .mic{box-shadow:0 0 0 10px rgba(242,179,61,.28),0 0 0 22px rgba(242,179,61,.12);animation:halo 1.6s ease-in-out infinite}
+body.listening .mic .mc,body.follow:not(.speaking) .mic .mc,body.speaking .mic .mc{display:none}
+body.listening .mic .wv,body.follow:not(.speaking) .mic .wv,body.speaking .mic .wv{display:block}
+body.speaking:not(.listening) .mic{background:transparent;color:var(--amber);box-shadow:none;animation:none}
+body.speaking:not(.listening) .mic svg{width:28px;height:28px}
+@keyframes halo{0%,100%{box-shadow:0 0 0 8px rgba(242,179,61,.30),0 0 0 18px rgba(242,179,61,.12)}50%{box-shadow:0 0 0 12px rgba(242,179,61,.26),0 0 0 26px rgba(242,179,61,.08)}}
+.mic:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
 .wave{display:none;align-items:center;justify-content:center;gap:9px;height:88px;color:var(--amber)}
 .wave i{display:block;height:100%;border-radius:999px;background:currentColor;transform-origin:50% 50%}
 .wave i:nth-child(1),.wave i:nth-child(5){height:42%}
@@ -74,7 +81,7 @@ body.intro .app{opacity:0}
 /* voice list: every English voice the phone reports, tap one to hear it and use it */
 .vlist{position:fixed;inset:0;z-index:60;background:var(--navy);color:var(--bone);display:flex;flex-direction:column;overflow-y:auto;padding:calc(24px + env(safe-area-inset-top,0px)) 24px 0}
 .vlist[hidden]{display:none}
-.vlist h2{margin:0;font:600 40px/44px var(--body);letter-spacing:-.01em}
+.vlist h2{margin:0;font:600 20px/28px var(--body)}
 .vlist .vnote{margin:12px 0 16px;color:var(--grey);font-size:16px;line-height:24px}
 .vlist ul{list-style:none;margin:0 -24px;padding:0 24px calc(24px + env(safe-area-inset-bottom,0px));flex:none}
 .vlist li button{all:unset;box-sizing:border-box;width:100%;display:block;padding:14px 16px;margin:0 0 8px;border-radius:16px;background:#26282D;cursor:pointer}
@@ -88,10 +95,10 @@ body.intro .app{opacity:0}
 .gkey button{all:unset;cursor:pointer;height:44px;padding:0 20px;border-radius:999px;background:var(--amber);color:var(--ink);font:600 16px/44px var(--body)}
 .gkey button[hidden]{display:none}
 .gkey p{margin:0;font-size:14px;line-height:20px}
-.vhead{display:flex;align-items:center;gap:8px;margin:-8px 0 16px -12px}
+.vhead{display:flex;align-items:center;gap:4px;margin:-12px 0 8px -12px}
 .back{all:unset;width:48px;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--amber)}
 .back svg{width:28px;height:28px}
-.vlist h3{margin:24px 0 12px;font:600 16px/24px var(--body);opacity:.75}
+.vlist h3{margin:16px 0 12px;font:600 16px/24px var(--body);opacity:.75}
 #ovitems,#settings ul{padding-bottom:0}
 .seg{display:flex;gap:8px}
 .seg button{all:unset;cursor:pointer;flex:1 1 0;text-align:center;height:48px;border-radius:999px;background:#26282D;font:600 16px/48px var(--body)}
@@ -102,7 +109,7 @@ body.intro .app{opacity:0}
 .cog svg{width:26px;height:26px}
 /* settings only on the home screen: hidden while listening, speaking or in a conversation, so it can't interrupt */
 body.session .cog,body.listening .cog,body.speaking .cog,body.follow .cog{display:none}
-@media (prefers-reduced-motion:reduce){body{transition:none} .wave i,.mic svg{animation:none!important}}
+@media (prefers-reduced-motion:reduce){body{transition:none} .wave i,.mic svg,.mic{animation:none!important}}
 </style>
 </head>
 <body>
@@ -114,7 +121,7 @@ body.session .cog,body.listening .cog,body.speaking .cog,body.follow .cog{displa
   </div>
   <p class="ctxline" id="ctx"></p>
   <div class="stage" id="stage"></div>
-  <div class="dock"><button class="mic" id="mic" type="button" aria-label="Talk to Relay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5M8.5 21h7"/></svg></button></div>
+  <div class="dock"><button class="mic" id="mic" type="button" aria-label="Talk to Relay"><svg class="mc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5M8.5 21h7"/></svg><svg class="wv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg></button></div>
   <div class="sr" id="vstate" aria-live="polite"></div>
 </div>
 
