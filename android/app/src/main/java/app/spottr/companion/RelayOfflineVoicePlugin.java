@@ -201,7 +201,8 @@ public class RelayOfflineVoicePlugin extends Plugin {
                 g.setSid(sid); g.setSpeed(speed); g.setNumSteps(steps);
                 Map<String, String> extra = new HashMap<>(); extra.put("lang", "en"); g.setExtra(extra);
                 final long[] written = { 0 };
-                e.generateWithConfigAndCallback(text, g, samples -> {
+                // a real class, not a lambda: the engine looks up invoke(float[]) returning Integer by name, which a lambda doesn't have
+                e.generateWithConfigAndCallback(text, g, new kotlin.jvm.functions.Function1<float[], Integer>() { @Override public Integer invoke(float[] samples) {
                     if (my != speakSeq) return 0;  // stopped or replaced
                     if (first[0] < 0) first[0] = System.currentTimeMillis() - t0;
                     int off = 0;
@@ -214,7 +215,7 @@ public class RelayOfflineVoicePlugin extends Plugin {
                     }
                     written[0] += samples.length;
                     return 1;
-                });
+                } });
                 // wait for the last samples to play out
                 long end = System.currentTimeMillis() + 15000;
                 while (my == speakSeq && out.getPlaybackHeadPosition() < written[0] && System.currentTimeMillis() < end) Thread.sleep(30);
