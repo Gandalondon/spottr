@@ -292,13 +292,21 @@ function stepIntent(t) {
   if (named && named.n !== S.quest) return stepAnswer(named, 0, "Starting at step 1. Tell me if you're further in. ");
   const hit = cur.steps.findIndex(s => (s.al || []).some(a => t.includes(a)));
   if (hit >= 0 && hit !== (S.step || 0)) return stepAnswer(cur, hit, "That's step " + (hit + 1) + ". ");
-  if (has(t, [" done ", " next ", "did that", "found it", "finished", "already done", "what now", "completed", "got that"])) {
+  const advance = prefix => {
     const fin = cur.steps[S.step || 0];
     if (fin && fin.pin) { S.seen = { n: fin.where || fin.t.replace(/^optional: /i, "").replace(/^\w/, c => c.toLowerCase()), y: fin.pin.y, x: fin.pin.x, at: Date.now() }; S.raidAt = S.raidAt || Date.now(); }
     const i = (S.step || 0) + 1;
     if (i >= cur.steps.length) { S.step = cur.steps.length - 1; save(); return { show: cur.who ? "All done. Hand it in to " + cur.who + "." : "All done.", say: "That was the last step of " + cur.n + "." + (cur.who ? " Hand it in to " + cur.who + "." : ""), ctx: cur.n }; }
-    return stepAnswer(cur, i);
-  }
+    return stepAnswer(cur, i, prefix);
+  };
+  if (has(t, [" done ", " next ", "did that", "found it", "finished", "already done", "what now", "now what", "what's next", "whats next", "completed", "got that"])) return advance();
+  /* arriving: "I'm in the room", "made it", "I'm here". On a getting-there step (head to, reach, enter), that step is done, so give the next one. */
+  const here = cur.steps[S.step || 0];
+  const travel = here && /^(head|reach|go|get|enter|return|make your way)\b/i.test(here.t);
+  const arrived = has(t, ["made it", "got here", "got there", "arrived", "i'm here", "im here", "i'm there", "im there", "i'm in the", "im in the", "i am in the", "i'm in a ", "im in a ", "i'm inside", "im inside", "i'm at the door", "im at the door"]);
+  const whatNow = has(t, ["what do i do", "what should i do", "what do we do", "what now", "then what", "what do i need", "what am i looking for", "what am i doing"]);
+  if (arrived && travel) return advance("Good, you're there. ");
+  if (arrived || whatNow) return stepAnswer(cur, S.step || 0);
   if (has(t, ["previous", "go back a step", "step back"])) return stepAnswer(cur, (S.step || 0) - 1);
   if (named || hit >= 0 || has(t, ["where is it", "where do i go", "this step", "how do i get there", "what step", "where am i up to"])) return stepAnswer(cur, S.step || 0);
   return null;
@@ -389,7 +397,16 @@ function answer(raw, opts) {
   }
   if (has(t, ["grandioso", "launch tower"])) return { show: "Blue Gate only, for now.", say: "That's on another map. I only have Blue Gate so far." };
 
-  return { show: "Say again?", say: "Sorry, say that again? You can tell me a quest and step, or ask for the way out.", ctx: "Try: I'm on Home to Roost, step 3" };
+  /* didn't understand: never drop the quest. Remind them where they are, and show what Relay heard so mishearings are obvious. */
+  const heard = "Heard: \u201C" + String(raw).trim() + "\u201D";
+  const cq = QUESTS.find(q => q.n === S.quest);
+  if (cq) {
+    const st = cq.steps[S.step || 0], a = stepAnswer(cq, S.step || 0);
+    a.say = "I didn't catch that. You're still on step " + ((S.step || 0) + 1) + ", " + st.t.charAt(0).toLowerCase() + st.t.slice(1) + ". Say done when you've finished it.";
+    a.full = a.say; a.ctx = heard;
+    return a;
+  }
+  return { show: "Say again?", say: "Sorry, say that again? You can tell me a quest and step, or ask for the way out.", ctx: heard };
 }
 
 /* =================== voice: native app or browser =================== */
