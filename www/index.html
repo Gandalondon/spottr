@@ -81,6 +81,13 @@ body.intro .app{opacity:0}
 .vlist li button.on{background:var(--amber);color:var(--ink)}
 .vlist li .n{display:block;font-size:18px;line-height:24px;font-weight:600}
 .vlist li .m{display:block;font-size:14px;line-height:20px;opacity:.75}
+.gkey{margin:0 0 20px;display:flex;flex-direction:column;gap:8px}
+.gkey label{font-size:16px;line-height:24px}
+.gkey input{all:unset;box-sizing:border-box;width:100%;height:48px;padding:0 16px;border-radius:12px;background:#FFFFFF;color:var(--ink);font:400 16px/48px var(--body)}
+.gkey .gkrow{display:flex;gap:8px}
+.gkey button{all:unset;cursor:pointer;height:44px;padding:0 20px;border-radius:999px;background:var(--amber);color:var(--ink);font:600 16px/44px var(--body)}
+.gkey button#gkoff{background:#26282D;color:var(--bone)}
+.gkey p{margin:0;font-size:14px;line-height:20px}
 .vlist .vclose{position:absolute;right:12px;top:calc(16px + env(safe-area-inset-top,0px))}
 @media (prefers-reduced-motion:reduce){body{transition:none} .wave i,.mic svg{animation:none!important}}
 </style>
@@ -101,6 +108,7 @@ body.intro .app{opacity:0}
   <button class="close vclose" id="vclose" type="button" aria-label="Close voices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <h2>Voices</h2>
   <p class="vnote" id="vnote">Tap a voice to hear it. The one you tap last is the one Relay uses.</p>
+  <form class="gkey" id="gkey"><label for="gkin">Gemini key, for natural conversation (stays on this phone)</label><input id="gkin" type="password" autocomplete="off" placeholder="Paste your Google AI Studio key"><div class="gkrow"><button type="submit">Save</button><button type="button" id="gkoff">Remove</button></div><p id="gkstat"></p></form>
   <ul id="vitems"></ul>
 </div>
 <script src="leaflet.js"></script>
@@ -305,7 +313,10 @@ function stepAnswer(q, i, prefix) {
       else { map = { you: null, stars: pts, others: [] }; go = go || pts.length + " " + st.enemy + " spawn points on Blue Gate."; }
     } else go = go || "I have no " + st.enemy + " spawn points on Blue Gate.";
   }
-  if (st.pin) { map = { you, stars: [st.pin], others: [] }; if (you) go += (go ? " " : "") + "It's " + compass(you, st.pin) + " of you."; }
+  /* the map is for getting from A to B. Once you're there (same spot as the step before, and not a "head to" step), no map. */
+  const travel = /^(head|reach|go |get |enter|return|find the start|follow|make your way|on \w+, attach|on \w+, photograph|take a photo)/i.test(st.t);
+  const sameSpot = i > 0 && q.steps[i - 1].where && q.steps[i - 1].where === st.where;
+  if (st.pin && (travel || !sameSpot)) { map = { you, stars: [st.pin], others: [] }; if (you) go += (go ? " " : "") + "It's " + compass(you, st.pin) + " of you."; }
   if (!go) go = st.pin ? "It's marked on the map." : "I don't have a verified location for this step yet.";
   const last = i === q.steps.length - 1;
   const tail = last ? (q.who ? " That's the last step. Then hand it in to " + q.who + "." : " That's the last step.") : " Say done when you've finished.";
@@ -325,7 +336,7 @@ function stepIntent(t) {
   if (sm) { const n = NUM[sm[1]] || parseInt(sm[1], 10); return stepAnswer(cur, n - 1); }
   if (named && named.n !== S.quest) return stepAnswer(named, 0, "Starting at step 1. Tell me if you're further in. ");
   const hit = cur.steps.findIndex(s => (s.al || []).some(a => t.includes(a)));
-  if (hit >= 0 && hit !== (S.step || 0)) return stepAnswer(cur, hit, "That's step " + (hit + 1) + ". ");
+  if (hit > (S.step || 0)) return stepAnswer(cur, hit, "That's step " + (hit + 1) + ". ");  /* forward only: going back needs "step N" */
   const advance = prefix => {
     const fin = cur.steps[S.step || 0];
     if (fin && fin.pin) { S.seen = { n: fin.where || fin.t.replace(/^optional: /i, "").replace(/^\w/, c => c.toLowerCase()), y: fin.pin.y, x: fin.pin.x, at: Date.now() }; S.raidAt = S.raidAt || Date.now(); }
@@ -503,6 +514,13 @@ function speak(s, done) {
   const id = ++speakId;
   const fin = ok => { if (id !== speakId) return; setVoiceState("idle"); if (ok && done) done(); };
   setVoiceState("speaking");
+  if (gKey() && gTtsOk) {
+    gemSpeak(s).then(r => { if (r === true) fin(true); else if (r === "stopped") fin(false); else speakPhone(s, fin); });
+    return;
+  }
+  speakPhone(s, fin);
+}
+function speakPhone(s, fin) {
   if (RV) {
     const v = voiceIdx >= 0 ? VOICES[voiceIdx] : null;
     RV.speak({ text: s, voice: v ? v.name : "", rate: S.voiceRate || RATE, pitch: 1.0, plain: !!S.voicePlain }).then(r => { if (r && r.mode != null) lastMode = r.mode; RV.voices().then(x => { VINFO = x; }).catch(() => {}); fin(!(r && r.stopped)); }).catch(() => fin(false));
@@ -510,7 +528,7 @@ function speak(s, done) {
   }
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(s); if (webVoice) u.voice = webVoice; u.lang = "en-GB"; u.rate = RATE; u.onend = () => fin(true); u.onerror = () => fin(false); speechSynthesis.speak(u); } catch (e) { fin(false); }
 }
-function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (RV) RV.stop(); else speechSynthesis.cancel(); } catch (e) {} }
+function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (gemSpeak.stop) gemSpeak.stop(); } catch (e) {} try { if (RV) RV.stop(); else speechSynthesis.cancel(); } catch (e) {} }
 
 /* =================== listening =================== */
 /* Conversation: after every answer Relay keeps listening, re-arming the microphone each time the phone's recogniser
@@ -724,11 +742,90 @@ async function aiAnswer(q) {
   } catch (e) { return null; }
 }
 
+/* =================== Gemini mode: natural conversation (needs a free Google AI Studio key and internet) ===================
+   Gemini reads what you said plus everything Relay knows (your quest and step, every step's guide text, where you are,
+   the last few exchanges) and replies in natural words. It must pick one of Relay's commands, which Relay applies to its
+   own state and map, and it is told to use only the facts given, so it can't make up routes. Exit, hatch, enemy and place
+   answers use Relay's own computed line, because those need map maths. If anything fails, Relay answers offline as before. */
+const GKEY_STORE = "relay-gemini-key";
+const G_MODELS = ["gemini-flash-latest", "gemini-2.5-flash"];
+const G_TTS_MODEL = "gemini-2.5-flash-preview-tts", G_VOICE = "Charon";  /* Charon: Google's calm, informative voice */
+let gHistory = [], gTtsOk = true;
+const gKey = () => { try { return localStorage.getItem(GKEY_STORE) || ""; } catch (e) { return ""; } };
+function gFacts() {
+  const cq = QUESTS.find(x => x.n === S.quest);
+  const lp = likelyPos();
+  const exit = lp ? near(lp.p, EXITS) : null;
+  return {
+    player: {
+      quest: cq ? cq.n : null, step: cq ? (S.step || 0) + 1 : null, stepTitle: cq ? cq.steps[S.step || 0].t : null,
+      lastPlace: S.place ? S.place.n : null, minutesLeft: minsNow(),
+      nearestExit: exit ? exit.n + ", " + compass(lp.p, exit) + (lp.sure ? "" : " (a guess from " + lp.short + ")") : "unknown until they say where they are"
+    },
+    quests: QUESTS.map(q => ({ name: q.n, handInTo: q.who || "", steps: q.steps.map((s, i) => ({ n: i + 1, title: s.t, where: s.where || "", howTo: s.go || s.show || "" })) })),
+    exits: EXITS.map(e => e.n), hatches: HATCHES.map(e => e.n) + " (need a Raider Hatch key)", places: PLACES.map(p => p.n), enemies: ENEMY_WORDS
+  };
+}
+function gPrompt(q) {
+  return `You are Relay, a voice companion for players of the video game ARC Raiders, on the map Blue Gate. You speak like a calm, friendly radio operator: natural, warm, British English, short. One or two sentences, under 30 words. No lists, no markdown.
+Use ONLY the facts in the JSON below. Never invent routes, places, items or steps. If you don't know, say so briefly and say what you need.
+The player talks casually, mid-game, maybe in a hurry; speech recognition may mishear words (for example "home to boost" means "Home to Roost").
+Facts: ${JSON.stringify(gFacts())}
+Recent conversation: ${JSON.stringify(gHistory.slice(-6))}
+The player just said: "${q}"
+Reply as JSON: {"command": one of "done" | "repeat" | "way out" | "hatch" | "i died" | "new raid" | "extracted" | "thanks" | "quest NAME step N" | "at PLACE" | "nearest ENEMY" | "chat", "reply": what you say out loud}.
+"done" = they finished the current step or arrived; your reply then gives the NEXT step. "repeat" = they want the current step again. "chat" = anything else (a question you can answer from the facts, or small talk); state doesn't change.`;
+}
+async function gCall(model, body) {
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": gKey() }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.error && j.error.message) || ("HTTP " + r.status));
+  return j;
+}
+async function gemAnswer(q) {
+  if (!gKey() || !navigator.onLine) return null;
+  const t0 = Date.now();
+  let j = null, err = "";
+  for (const m of G_MODELS) { try { j = await gCall(m, { contents: [{ role: "user", parts: [{ text: gPrompt(q) }] }], generationConfig: { temperature: 0.3, responseMimeType: "application/json" } }); break; } catch (e) { err = e.message; } }
+  if (!j) { setCtx("Gemini: " + err); return null; }
+  let out; try { out = JSON.parse(j.candidates[0].content.parts[0].text); } catch (e) { return null; }
+  const cmdLine = (out.command || "").toString(), reply = (out.reply || "").toString().trim();
+  if (!reply) return null;
+  const cmd = cmdLine.toLowerCase() === "chat" ? null : aiToCommand(cmdLine);
+  let a;
+  if (cmd) a = answer(cmd);
+  else if (S.last && S.last.a) a = Object.assign({}, S.last.a, { keepLast: false });
+  else a = { show: reply.split(/(?<=[.!?])\s/)[0], say: reply };
+  /* exits, hatches, enemies and places need map maths: keep Relay's own line. Everything else: Gemini's words. */
+  if (!/^(way out|where's the nearest|i'm at)/i.test(cmd || "")) { a.say = reply; a.full = reply; }
+  a.ctx = "Heard: \u201C" + q + "\u201D \u00b7 Gemini " + (Date.now() - t0) + " ms";
+  a.fallback = false;
+  gHistory.push({ player: q, relay: a.say }); gHistory = gHistory.slice(-8);
+  return a;
+}
+/* Gemini's own voice: whole clip from Google, played here. Falls back to the phone's voice if it fails. */
+let gAudio = null;
+async function gemSpeak(text) {
+  if (!gKey() || !gTtsOk || !navigator.onLine) return false;
+  try {
+    const j = await gCall(G_TTS_MODEL, { contents: [{ parts: [{ text: "Say calmly and clearly, like a friendly radio operator: " + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: G_VOICE } } } } });
+    const part = j.candidates[0].content.parts.find(p => p.inlineData);
+    const bin = atob(part.inlineData.data), n = bin.length / 2;
+    const ctx = gAudio || (gAudio = new (window.AudioContext || window.webkitAudioContext)());
+    if (ctx.state === "suspended") await ctx.resume();
+    const buf = ctx.createBuffer(1, n, 24000), ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v >= 32768) v -= 65536; ch[i] = v / 32768; }
+    const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination);
+    return await new Promise(res => { src.onended = () => res(true); gemSpeak.stop = () => { try { src.stop(); } catch (e) {} res("stopped"); }; src.start(); });
+  } catch (e) { if (/quota|exhausted|429|not found|not supported/i.test(e.message)) gTtsOk = false; setCtx("Gemini voice: " + e.message.slice(0, 80) + ". Using the phone's voice."); return false; }
+}
+
 async function handle(q) {
   q = (q || "").trim(); if (!q) return;
   let a = S.pending ? resolvePending(q) : null;
   if (!a) a = answer(q);
-  if (a.fallback) { const b = await aiAnswer(q); if (b) a = b; }
+  if (gKey()) { setCtx("Thinking..."); const g = await gemAnswer(q); if (g) a = g; }
+  else if (a.fallback) { const b = await aiAnswer(q); if (b) a = b; }
   const go = () => { if (a.after) a.after(); if (a.follow === false) { convoUntil = 0; endFollow(); return; } convoUntil = Date.now() + CONVO_MS; setTimeout(() => listen({ auto: true }), 350); };
   if (a.keepLast && S.last) { renderAnswer(S.last.q, S.last.a); speak(a.say, go); return; }
   S.last = { q, a }; save();
@@ -740,7 +837,7 @@ $("mic").addEventListener("click", e => { e.stopPropagation(); listen(); });
 /* tapping the greeting opens the voice list: every English voice the phone reports, each playable, no microphone involved */
 const TEST_LINE = "You need to get to the locker room. Take the stairs on your right, then the door is straight ahead.";
 async function openVoices() {
-  const box = $("vlist"), ul = $("vitems"); box.hidden = false; ul.innerHTML = "";
+  const box = $("vlist"), ul = $("vitems"); box.hidden = false; ul.innerHTML = ""; gkStatus();
   let all = [];
   try { const r = RV ? await RV.voices() : null; all = (r && r.voices) || []; } catch (e) {}
   const fixed = [{ name: "@system", rate: 1.0, label: "Test A: settings voice, normal speed", meta: "Speed 1.0 instead of 0.95" },
@@ -765,6 +862,9 @@ async function openVoices() {
   });
   $("vnote").textContent = all.length + " English voices on this phone. Tap one to hear it; the last one you tap is the one Relay uses. Gemini Nano: " + aiStatus + ".";
 }
+function gkStatus() { const k = gKey(); $("gkstat").textContent = k ? "Gemini mode on: natural replies and Gemini's voice (needs internet)." : "Gemini mode off: Relay works offline with the phone's voice."; $("gkin").value = ""; }
+$("gkey").addEventListener("submit", e => { e.preventDefault(); const v = $("gkin").value.trim(); if (v.length < 20) { $("gkstat").textContent = "That doesn't look like a key."; return; } try { localStorage.setItem(GKEY_STORE, v); } catch (er) {} gTtsOk = true; gkStatus(); });
+$("gkoff").addEventListener("click", () => { try { localStorage.removeItem(GKEY_STORE); } catch (er) {} gkStatus(); });
 $("vclose").addEventListener("click", () => { stopSpeaking(); $("vlist").hidden = true; loadVoices(); });
 $("word").addEventListener("click", () => {
   if ($("word").classList.contains("greet")) { openVoices(); return; }
