@@ -4,7 +4,7 @@
          | place (they said where they are) | hatch | enemy | stop | fallback (genuinely meaningless) */
 const HTR = { quest: "Home to Roost", step: 3 };   /* mid-quest: on step 3, just told to go to the locker room */
 const NONE = {};
-const AT_VILLAGE = { place: "Blue Gate Village" };
+const AT_VILLAGE = { place: "Village" };
 module.exports = [
   /* starting or switching a quest, said well and badly */
   { set: NONE, say: "I'm on Home to Roost, step 3", want: { quest: "Home to Roost", step: 3 } },
@@ -69,12 +69,35 @@ module.exports = [
   { set: HTR, say: "where's the nearest hatch", want: { hatch: true } },
 
   /* where I am */
-  { set: HTR, say: "I'm at the village", want: { place: "Blue Gate Village" } },
+  { set: HTR, say: "I'm at the village", want: { place: "Village" } },
   { set: NONE, say: "I'm by the comms tower", want: { place: "the Communication Tower" } },
-  { set: NONE, say: "near the checkpoint", want: { place: "the Checkpoint" } },
+  { set: NONE, say: "near the checkpoint", want: { place: "Checkpoint" } },
   { set: NONE, say: "I'm in the cellar", want: { place: "the Cellar" } },
-  { set: NONE, say: "I'm at the olive grove", want: { place: "the Olive Grove" } },
-  { set: NONE, say: "next to the fort", want: { place: "the Ancient Fort" } },
+  { set: NONE, say: "I'm at the olive grove", want: { place: "Olive Grove" } },
+  { set: NONE, say: "next to the fort", want: { place: "Ancient Fort" } },
+
+  /* where I am, the way people actually say it (29 Oct test: "I'm near the farm, south east") */
+  { set: NONE, say: ["I need an evac point", "I'm near the farm, south east"], want: { exitName: "Overlook Airshaft", place: "Farmlands" } },
+  { set: NONE, say: ["get me out", "south east"], want: { exitName: "Overlook Airshaft" } },
+  { set: NONE, say: ["get me out", "somewhere in the southeast"], want: { exitName: "Overlook Airshaft" } },
+  { set: NONE, say: ["evac", "no idea, top left I think"], want: { exitName: "Cliffside Airshaft" } },
+  { set: NONE, say: ["way out", "by the big wrecks on the left"], want: { exitName: "Forest Airshaft" } },
+  { set: NONE, say: ["where's the exit", "the homestead"], want: { exitName: "Overlook Airshaft" } },
+  { set: NONE, say: ["evac", "I'm in the village"], want: { exitName: "Cliffside Airshaft" } },
+  { set: NONE, say: ["where's the nearest extract", "warehouse"], want: { exitName: "Warehouse Airshaft" } },
+  { set: NONE, say: ["get me out", "blah blah the thing"], want: { near: "which side of the map" } },
+  { set: NONE, say: "evac from the south east", want: { exitName: "Overlook Airshaft" } },
+  { set: NONE, say: "I'm at the farm, where's the nearest way out", want: { exitName: "Overlook Airshaft", place: "Farmlands" } },
+  { set: NONE, say: "I'm at the olive grove, get me out", want: { exitName: "Forest Airshaft" } },
+  { set: NONE, say: "I'm near the data vault", want: { place: "Data Vault" } },
+  { set: NONE, say: "I'm at pilgrim's peak", want: { place: "Pilgrim's Peak" } },
+  { set: NONE, say: "near the gate control room", want: { place: "Gate Control Room" } },
+  { set: NONE, say: "I'm at trappers glade", want: { place: "Trapper's Glade" } },
+  { set: NONE, say: "I'm in the forest", want: { place: "The Forest" } },
+  { set: NONE, say: "I'm at the forest airshaft", want: { place: "Forest Airshaft" } },
+  { set: NONE, say: "I'm at the warehouse", want: { place: "Warehouse Complex" } },
+  { set: NONE, say: "I'm by the highway collapse", want: { place: "Highway Collapse" } },
+  { set: NONE, say: ["I'm at the farm", "what's around me"], want: { near: "Ruined Homestead" } },
 
   /* raid events */
   { set: HTR, say: "I died", want: { died: true } },

@@ -1,5 +1,5 @@
 /* Phrasings written after the rules were tuned, never tuned against: an honest read of how well Relay generalises. */
-const HTR = { quest: "Home to Roost", step: 3 }, NONE = {}, AT = { place: "Blue Gate Village" };
+const HTR = { quest: "Home to Roost", step: 3 }, NONE = {}, AT = { place: "Village" };
 module.exports = [
   { set: HTR, say: "alright I'm in the locker room", want: { advance: true } },
   { set: HTR, say: "yep sorted", want: { advance: true } },
@@ -24,6 +24,6 @@ module.exports = [
   { set: NONE, say: "frigate quest", want: { quest: "Boarding the Frigate" } },
   { set: HTR, say: "go to step one", want: { quest: "Home to Roost", step: 1 } },
   { set: NONE, say: "I'm standing by the radio tower", want: { place: "the Communication Tower" } },
-  { set: NONE, say: "we're near the highway", want: { place: "the Collapsed Highway" } },
+  { set: NONE, say: "we're near the highway", want: { place: "Highway Collapse" } },
   { set: HTR, say: "ta, that's me done", want: { stop: true } }
 ];

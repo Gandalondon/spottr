@@ -16,10 +16,12 @@ const page_ = process.argv[2] || path.join(__dirname, "../www/index.html");
       if (c.set.quest) { S.quest = c.set.quest; S.step = (c.set.step || 1) - 1; const q = QUESTS.find(q => q.n === S.quest); S.lastStep = { quest: q.n, i: S.step }; }
       if (c.set.place) { const pl = PLACES.find(p => p.n === c.set.place); S.place = { n: pl.n, y: pl.y, x: pl.x }; S.placeAt = Date.now(); S.raidAt = Date.now(); }
       const before = { quest: S.quest, step: S.step };
-      let a = S.pending ? resolvePending(c.say) : null; if (!a) a = answer(c.say);
+      const turns = Array.isArray(c.say) ? c.say : [c.say]; let a;
+      for (const say of turns) { a = S.pending ? resolvePending(say) : null; if (!a) a = answer(say); }
       return { before, after: { quest: S.quest, step: S.step, place: S.place && S.place.n }, a: { show: a.show, say: a.say, ctx: a.ctx || "", intent: a.intent || "" } };
     }, { c });
     const w = c.want, A = r.a, txt = (A.show + " " + A.say).toLowerCase();
+    const say_ = Array.isArray(c.say) ? c.say.join(" / ") : c.say;
     const isFallback = /didn't catch|say again/i.test(A.show);
     let ok;
     if (w.fallback) ok = isFallback;
@@ -34,7 +36,11 @@ const page_ = process.argv[2] || path.join(__dirname, "../www/index.html");
     else if (w.extracted) ok = /raid cleared/i.test(A.show);
     else if (w.enemy) ok = /spawn|nearest/i.test(txt) && !isFallback;
     else if (w.stop) ok = /standing by/i.test(A.show);
-    if (ok) pass++; else fails.push(`  ✗ "${c.say}"  want ${JSON.stringify(w)}\n      got: ${A.show} | ${A.say.slice(0, 90)}`);
+    else if (w.exitName) ok = A.say.includes(w.exitName);
+    else if (w.near) ok = new RegExp(w.near, "i").test(A.say);
+    if (ok && w.place && w.exitName) ok = r.after.place === w.place;
+    if (ok && /can you see/i.test(A.say)) ok = false;  /* never ask about something you'd need to see */
+    if (ok) pass++; else fails.push(`  ✗ "${say_}"  want ${JSON.stringify(w)}\n      got: ${A.show} | ${A.say.slice(0, 90)}`);
   }
   console.log(`${pass}/${CASES.length} understood`);
   if (fails.length) console.log(fails.join("\n"));

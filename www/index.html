@@ -118,6 +118,7 @@ body.intro .app{opacity:0}
 </div>
 <script src="leaflet.js"></script>
 <script src="data-bluegate.js"></script>
+<script src="data-bluegate-places.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 /* =================== data =================== */
@@ -134,26 +135,20 @@ R.filter(r => r.k === "a").forEach(r => { (ENEMIES[r.c] = ENEMIES[r.c] || []).pu
 
 /* places you can say you're at (names from MetaForge markers) */
 const P = (n, y, x, al) => ({ n, y, x, al });
+/* places, from the map's 28 named areas plus the exits, hatches and a few landmarks inside them.
+   al = what players actually say. Matching is on whole words; the longest match wins ("warehouse airshaft" beats "warehouse"). */
+const EXIT_AL = { "Warehouse Airshaft": ["warehouse airshaft", "warehouse shaft"], "Overlook Airshaft": ["overlook airshaft", "overlook"], "Forest Airshaft": ["forest airshaft", "forest shaft"], "Cliffside Airshaft": ["cliffside airshaft", "cliffside", "cliff side", "cliff"] };
+const AREAS = (window.BLUE_GATE_AREAS || []).map(a => Object.assign(P(a.n, a.y, a.x, a.al), { area: true, pos: a.pos }));
 const PLACES = [
-  ...EXITS.map(e => P(e.n, e.y, e.x, [e.n.split(" ")[0].toLowerCase()])),
+  ...EXITS.map(e => P(e.n, e.y, e.x, EXIT_AL[e.n] || [e.n.toLowerCase()])),
   ...HATCHES.map(e => P(e.n, e.y, e.x, [e.n.toLowerCase(), e.n.split(" ")[0].toLowerCase() + " hatch"])),
-  P("Blue Gate Village", 3180, 5753, ["village"]),
-  P("Pilgrim's Peak", 3245, 9568, ["pilgrim", "peak tower"]),
+  ...AREAS,
   P("the Communication Tower", 3374, 9539, ["communication tower", "comms tower", "comm tower", "radio tower"]),
   P("the Cellar", 6684, 6461, ["cellar"]),
-  P("the Security Wing", 3922, 7049, ["security wing"]),
   P("the Control Room", 4206, 7380, ["control room"]),
   P("the Confiscation Room", 4017, 7387, ["confiscation room"]),
-  P("the Checkpoint", 5800, 5918, ["checkpoint"]),
-  P("the Traffic Tunnel", 4367, 7335, ["traffic tunnel", "the tunnel"]),
-  P("the Olive Grove", 6329, 6683, ["olive grove", "olives"]),
-  P("the Collapsed Highway", 5430, 4553, ["collapsed highway", "highway"]),
-  P("the Barren Clearing", 3695, 4528, ["barren clearing", "clearing"]),
-  P("the Maintenance Bunker", 5818, 7518, ["maintenance bunker", "bunker"]),
   P("the Enelica Building", 5721, 7795, ["enelica"]),
-  P("the Abandoned Housing Project", 4879, 9485, ["housing project", "abandoned housing"]),
-  P("the Raider Camp", 5252, 8836, ["raider camp"]),
-  P("the Ancient Fort", 7025, 7501, ["ancient fort", "fort"])
+  P("the Raider Camp", 5252, 8836, ["raider camp"])
 ];
 
 /* quests: steps follow the in-game order; pins from MetaForge quest markers */
@@ -243,7 +238,36 @@ const near = (p, list) => list.slice().sort((a, b) => dist(p, a) - dist(p, b))[0
 /* =================== understanding =================== */
 const has = (t, words) => words.some(w => t.includes(w));
 const norm = raw => " " + raw.toLowerCase().replace(/\b(hey|hi|ok|okay)?\s*(relay|really|re lay|spotter|spottr)\b[,]?/g, " ").replace(/[’]/g, "'").replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ") + " ";
-function findPlace(t) { return PLACES.find(p => p.al.some(a => t.includes(a))); }
+function findPlace(t) {
+  let best = null, len = 0;
+  for (const p of PLACES) for (const a of p.al) if (a.length > len && t.includes(" " + a + " ")) { best = p; len = a.length; }
+  if (best) return best;
+  for (const p of PLACES) for (const a of p.al) if (a.length >= 6 && fuzzyHas(t, a)) return p;  /* misheard: "pilgrams peak" */
+  return null;
+}
+/* rough position from a direction: "south-east", "bottom left", "middle of the map". Thirds of the area the named places cover. */
+const EXT = (() => { const ys = PLACES.map(p => p.y), xs = PLACES.map(p => p.x); return { y0: Math.min(...ys), y1: Math.max(...ys), x0: Math.min(...xs), x1: Math.max(...xs) }; })();
+function findDir(t) {
+  t = t.replace(/\b(north|south)(east|west)(ern)?\b/g, "$1 $2");  /* "southeast" */
+  const side = "(?: side| part| bit| corner| end| edge| area| of the map)";
+  let ns = /\b(north|northern|northside)\b/.test(t) ? "N" : /\b(south|southern|southside)\b/.test(t) ? "S" : "";
+  let ew = /\b(east|eastern)\b/.test(t) ? "E" : /\b(west|western)\b/.test(t) ? "W" : "";
+  if (!ns && new RegExp("\\b(top|upper)\\b").test(t)) ns = "N";
+  if (!ns && new RegExp("\\b(bottom|lower)\\b").test(t)) ns = "S";
+  if (!ew && (new RegExp("\\b(right)" + side).test(t) || /\b(top|bottom|upper|lower|far) right\b/.test(t) || /\bright hand side\b/.test(t))) ew = "E";
+  if (!ew && (new RegExp("\\b(left)" + side).test(t) || /\b(top|bottom|upper|lower|far) left\b/.test(t) || /\bleft hand side\b/.test(t))) ew = "W";
+  const mid = /\b(middle|centre|center|central)\b/.test(t);
+  if (!ns && !ew && !mid) return null;
+  const fy = ns === "N" ? 1 / 6 : ns === "S" ? 5 / 6 : 0.5, fx = ew === "W" ? 1 / 6 : ew === "E" ? 5 / 6 : 0.5;
+  const word = { N: "north", S: "south", E: "east", W: "west" };
+  const n = ns && ew ? word[ns] + "-" + word[ew] : ns ? word[ns] : ew ? word[ew] : "middle";
+  return { n: n === "middle" ? "the middle of the map" : "the " + n, y: Math.round(EXT.y0 + (EXT.y1 - EXT.y0) * fy), x: Math.round(EXT.x0 + (EXT.x1 - EXT.x0) * fx), rough: true };
+}
+/* where the player says they are: a named place beats a direction */
+function findWhere(t) { const p = findPlace(t); if (p) return { n: p.n, y: p.y, x: p.x }; return findDir(t); }
+const METRES = 5.5;  /* map units per metre on Blue Gate, from the fitted place distances */
+const metres = (a, b) => { const m = dist(a, b) / METRES; return m < 100 ? Math.max(10, Math.round(m / 10) * 10) : Math.round(m / 50) * 50; };
+const nearestAreas = (p, n) => AREAS.slice().sort((a, b) => dist(p, a) - dist(p, b)).slice(0, n);
 /* quest names, forgiving of mishearing: exact words first, then near matches ("home to boost" = Home to Roost).
    A name of several words may be 2 letters off in total; a single long word 1; short single words must be exact. */
 function lev(a, b) {
@@ -283,7 +307,7 @@ const LISTING = [" all ", "list", "how many", "what are the"];
 
 function askWhere(raw) {
   S.pending = { q: raw, asks: S.pending ? S.pending.asks : 0 }; save();
-  return { show: "Where are you?", say: "Where are you? Name something you can see, like an airshaft, a hatch or a building." };
+  return { show: "Where are you?", say: "Where are you, roughly? A place name, or just a side of the map, like south-east.", ctx: "A place, or a side of the map" };
 }
 function askStill(raw) {
   S.pending = { q: raw, asks: S.pending ? S.pending.asks : 0 }; save();
@@ -291,8 +315,8 @@ function askStill(raw) {
 }
 function resolvePending(q) {
   const p = S.pending, t = norm(q);
-  const place = findPlace(t);
-  if (place) { S.place = place; S.placeAt = Date.now(); S.raidAt = S.raidAt || Date.now(); S.pending = null; save(); const a = answer(p.q); a.say = "Got it. " + a.say; return a; }
+  const place = findWhere(t);
+  if (place) { S.place = place; S.placeAt = Date.now(); S.raidAt = S.raidAt || Date.now(); S.pending = null; save(); const a = answer(p.q); a.say = (place.rough ? "Got it. " : "Got it, " + place.n + ". ") + a.say; return a; }
   if (/\b(yes|yeah|yep|yup|still|same|correct)\b/.test(t) && S.place) { S.placeAt = Date.now(); S.pending = null; save(); return answer(p.q); }
   if (/(don't know|dont know|no idea|not sure|lost|no clue|skip)/.test(t)) { S.pending = null; save(); return answer(p.q, { general: true }); }
   if (/\b(no|nope|moved)\b/.test(t)) { S.place = null; save(); return askWhere(p.q); }
@@ -300,7 +324,7 @@ function resolvePending(q) {
   if (newQ) { S.pending = null; save(); return null; }
   p.asks += 1; save();
   if (p.asks >= 2) { S.pending = null; save(); const a = answer(p.q, { general: true }); a.say = "I can't place that, so here's everything. " + a.say; return a; }
-  return { show: "Can you see an airshaft, a hatch or a tower?", say: "I can't place that. Can you see an airshaft, a hatch or a tower?" };
+  return { show: "Which side of the map?", say: "I don't know that one. Roughly which side of the map are you on? North, south, east or west.", ctx: "Heard: \u201C" + String(q).trim() + "\u201D", unplaced: true };
 }
 
 const NUM = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, first:1, second:2, third:3, fourth:4, fifth:5, sixth:6, seventh:7, eighth:8, last:99 };
@@ -392,13 +416,26 @@ function answer(raw, opts) {
   if (mm) { S.minutesLeft = NUM[mm[1]] || parseInt(mm[1], 10); S.minutesAt = Date.now(); S.raidAt = S.raidAt || Date.now(); save(); }
 
   const placeMention = findPlace(t);
-  const setsLocation = placeMention && (/\b(i'm|i am|im)\s+(at|near|in|by|next to|outside|on|inside|beside)\b/.test(t) || (/\b(at|near|by|next to|beside|outside|inside)\b/.test(t) && !has(t, ["where", "how"])));
-  if (setsLocation) {
-    S.place = { n: placeMention.n, y: placeMention.y, x: placeMention.x }; S.placeAt = Date.now(); S.raidAt = S.raidAt || Date.now(); save();
-    if (!has(t, ["extract", "exit", "out", "leave", "step", "where", ...ENEMY_WORDS])) return { show: "Got it. " + placeMention.n.charAt(0).toUpperCase() + placeMention.n.slice(1) + ".", say: "Got it, " + placeMention.n + "." };
+  const iAm = /\b(i'm|i am|im|we're|we are)\b/.test(t);
+  const setsLocation = placeMention && (/\b(i'm|i am|im|we're|we are)\s+(at|near|in|by|next to|outside|on|inside|beside|around|close to)\b/.test(t) || (/\b(at|near|by|next to|beside|outside|inside|around|close to)\b/.test(t) && !has(t, ["where", "how"])));
+  const dirOnly = !placeMention && !has(t, ["step"]) && (iAm || /\b(from|in|on|around|near) the\b/.test(t)) ? findDir(t) : null;  /* "I'm in the south-east", "evac from the south east" */  /* "I'm in the south-east" */
+  if (setsLocation || dirOnly) {
+    const w = setsLocation ? { n: placeMention.n, y: placeMention.y, x: placeMention.x } : dirOnly;
+    S.place = w; S.placeAt = Date.now(); S.raidAt = S.raidAt || Date.now(); save();
+    if (!has(t, ["extract", "exit", "out", "leave", "evac", "escape", "step", "where", "hatch", ...ENEMY_WORDS])) {
+      const e = near(w, EXITS);
+      return { show: "Got it. " + w.n.charAt(0).toUpperCase() + w.n.slice(1) + ".", say: "Got it, " + w.n + ". Nearest way out is " + e.n + ", " + compass(w, e) + ".", map: { you: w.rough ? Object.assign({ guess: true }, w) : w, stars: [e] } };
+    }
   }
   const psNow = opts.general ? "general" : posState();
 
+  if (has(t, ["what's near", "whats near", "what is near", "what's around", "whats around", "what is around", "where am i ", "what's close", "whats close", "anything near"])) {
+    const lp = opts.general ? null : likelyPos();
+    if (!lp) return askWhere(raw);
+    const ar = nearestAreas(lp.p, 3).filter(a => a.n !== lp.p.n).slice(0, 2), e = near(lp.p, EXITS);
+    const from = lp.p.rough ? "Around " + lp.p.n + ": " : lp.sure ? "" : "If you're still near " + lp.p.n + ": ";
+    return { show: ar.map(a => a.n).join(", ") + ".", say: from + ar.map(a => a.n + " is " + compass(lp.p, a)).join(", ") + ". Nearest way out is " + e.n + ", " + compass(lp.p, e) + ".", map: { you: lp.p, stars: ar.concat([e]) } };
+  }
   const EXIT_WORDS = ["extract", "exit", "way out", "get out", "get me out", "out of here", "leave", "airshaft", "evac", "escape"];
   const help = /^\s*(help|help me|help help|mayday|sos)\s*$/.test(t);  /* a lone "help" mid-raid means get me out */
   const wantsExit = (help || has(t, EXIT_WORDS)) && !has(t, [" step "]);
@@ -417,15 +454,18 @@ function answer(raw, opts) {
       const best = near(lp.p, EXITS), dir = compass(lp.p, best);
       return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + best.n + ". Head " + dir + ". That's a guess from " + lp.short + ". Tell me if you've moved.", map: { you: Object.assign({ guess: true }, lp.p), stars: [best] }, ctx: "A guess from " + lp.short + ". Say where you are if you've moved." };
     }
-    if (wantsNearest && !lp) { const a = askWhere(raw); a.say = "Where are you? Name something you can see. All four airshafts are on the map meanwhile."; a.map = { you: null, stars: EXITS }; return a; }
+    if (wantsNearest && !lp && !opts.general) { const a = askWhere(raw); a.say = "Where are you, roughly? A place, or just a side of the map. All four airshafts are on the map meanwhile."; a.map = { you: null, stars: EXITS }; return a; }
     if (!lp || !wantsNearest) {
       const tail = "";
       return { show: (rush ? "Move. " : "") + "Four airshafts, marked.", say: rush + "There are four airshafts: Warehouse, Overlook, Forest and Cliffside. They're all marked on the map." + tail, map: { you: psNow === "fresh" ? S.place : null, stars: EXITS } };
     }
     const best = near(lp.p, EXITS);
     const dir = compass(lp.p, best);
-    if (dist(lp.p, best) < 80) return { show: "You're at " + best.n + ".", say: rush + "You're right at " + best.n + ". Extract there.", map: { you: null, stars: [best] } };
-    return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + best.n + ". Head " + dir + ".", map: { you: lp.p, stars: [best] } };
+    if (dist(lp.p, best) < 80 && !lp.p.rough) return { show: "You're at " + best.n + ".", say: rush + "You're right at " + best.n + ". Extract there.", map: { you: null, stars: [best] } };
+    const hb = near(lp.p, HATCHES), hatchTip = dist(lp.p, hb) < dist(lp.p, best) * 0.7 ? " " + hb.n + " is closer, " + compass(lp.p, hb) + ", if you've got a hatch key." : "";
+    const lead = lp.p.rough ? "From " + lp.p.n + ", your best bet is " : "";
+    const how = lp.p.rough ? ". Head " + dir + "." : ", about " + metres(lp.p, best) + " metres " + dir + ".";
+    return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + (lead ? lead + best.n : best.n) + how + hatchTip, map: { you: lp.p.rough ? Object.assign({ guess: true }, lp.p) : lp.p, stars: hatchTip ? [best, hb] : [best] } };
   }
   if (has(t, ["hatch"])) {
     if (psNow === "fresh") { const b = near(S.place, HATCHES); const dir = compass(S.place, b); return { show: b.n + ", " + dir + ". Needs a key.", say: "The nearest hatch is " + b.n + ", " + dir + " of you. You'll need a Raider Hatch key.", map: { you: S.place, stars: [b] } }; }
@@ -446,7 +486,8 @@ function answer(raw, opts) {
   if (placeMention && has(t, ["where"])) {
     const P1 = placeMention.n.charAt(0).toUpperCase() + placeMention.n.slice(1);
     const dir = psNow === "fresh" ? compass(S.place, placeMention) : "";
-    return { show: P1 + (dir ? ", " + dir + "." : "."), say: P1 + (dir ? " is " + dir + " of you." : " is marked on the map."), map: { you: psNow === "fresh" ? S.place : null, stars: [placeMention] } };
+    const far = dir && !S.place.rough ? "about " + metres(S.place, placeMention) + " metres " : "";
+    return { show: P1 + (dir ? ", " + dir + "." : "."), say: P1 + (dir ? " is " + far + dir + " of you." : " is marked on the map." + (placeMention.pos ? " It's in the " + placeMention.pos + " of the map." : "")), map: { you: psNow === "fresh" ? S.place : null, stars: [placeMention] } };
   }
   if (has(t, ["grandioso", "launch tower"])) return { show: "Blue Gate only, for now.", say: "That's on another map. I only have Blue Gate so far." };
 
@@ -748,7 +789,8 @@ new raid        (they are starting or joining a new raid)
 extracted       (they got out safely)
 thanks          (they are finished talking)
 quest NAME step N   (they name a quest and maybe a step; NAME from: ${QUESTS.map(x => x.n).join("; ")})
-at PLACE        (they say where they are; PLACE from: ${PLACES.map(p => p.n.replace(/^the /, "")).join("; ")})
+at PLACE        (they say where they are or what they're near; PLACE from: ${PLACES.map(p => p.n.replace(/^the /, "")).join("; ")}. A farm means Farmlands, a homestead means Ruined Homestead.)
+side DIRECTION  (they only say which part of the map they're in; DIRECTION one of: north, south, east, west, north-east, north-west, south-east, south-west, middle)
 nearest ENEMY   (they ask about an enemy; ENEMY from: ${ENEMY_WORDS.join(", ")})
 unknown         (none of these)`;
 }
@@ -758,10 +800,24 @@ function aiToCommand(line) {
   let m = l.match(/^quest (.+?)(?: step (\d+))?$/);
   if (m) { const q = QUESTS.find(x => x.n.toLowerCase() === m[1].trim()); if (q) return "I'm on " + q.n + (m[2] ? ", step " + m[2] : ""); }
   m = l.match(/^at (.+)$/);
-  if (m) { const p = PLACES.find(x => x.n.toLowerCase().replace(/^the /, "") === m[1].trim().replace(/^the /, "")); if (p) return "I'm at " + p.n; }
+  if (m) { const p = PLACES.find(x => x.n.toLowerCase().replace(/^the /, "") === m[1].trim().replace(/^the /, "")) || findPlace(" " + m[1].trim() + " "); if (p) return "I'm at " + p.n; }
+  m = l.match(/^side (north|south|east|west|middle)(?:[ -](east|west))?$/);
+  if (m) return "I'm in the " + m[1] + (m[2] ? " " + m[2] : "");
   m = l.match(/^nearest (\w+)$/);
   if (m && ENEMY_WORDS.includes(m[1])) return "where's the nearest " + m[1];
   return null;
+}
+/* Nano, just for "where are you?" replies Relay's own word lists didn't recognise: maps a description to a known place or a side of the map */
+async function aiPlace(q) {
+  if (!AI || aiStatus !== "available") return null;
+  try {
+    const prompt = `A player of ARC Raiders on the map Blue Gate was asked where they are. They said: "${q}" (speech recognition, may be misheard).
+Known places: ${PLACES.map(p => p.n.replace(/^the /, "")).join("; ")}.
+Reply with exactly one line and nothing else: "at PLACE" if they mean one of the known places (a farm means Farmlands, a homestead means Ruined Homestead), or "side DIRECTION" if they only give a direction (north, south, east, west, north-east, north-west, south-east, south-west, middle), or "unknown".`;
+    const r = await AI.ask({ prompt });
+    const cmd = aiToCommand(r && r.text);
+    return cmd && /^i'm (at|in) /i.test(cmd) ? { cmd, ms: r.ms } : null;
+  } catch (e) { return null; }
 }
 async function aiAnswer(q) {
   if (!AI || aiStatus !== "available") return null;
@@ -924,10 +980,15 @@ async function gemSpeak(text) {
 async function handle(q) {
   q = (q || "").trim(); if (!q) return;
   let a = S.pending ? resolvePending(q) : null;
+  if (a && a.unplaced) {  /* Relay didn't recognise the place: ask Nano before asking the player again */
+    const pend = S.pending;
+    const b = await aiPlace(q);
+    if (b) { S.pending = pend; const c = resolvePending(b.cmd); if (c && !c.unplaced) { c.ctx = "Heard: \u201C" + q + "\u201D. Understood as: " + b.cmd + " (" + b.ms + " ms)"; a = c; } else S.pending = pend; }
+  }
   if (!a) a = answer(q);
   if (gKey()) { setCtx("Thinking..."); const t0 = Date.now(); const g = await gemAnswer(q);
     if (g && g.ignore) { setCtx(g.ctx); setVoiceState("idle"); if (Date.now() < convoUntil) setTimeout(() => listen({ auto: true }), 350); return; }  /* side talk: stay quiet, keep listening */
-    if (g) a = g; else a.ctx = "Gemini didn't answer (" + (gLastErr || "no reply") + ", " + (Date.now() - t0) + " ms), so this is Relay's offline answer."; }
+    if (g) a = g; else { a.ctx = "Gemini didn't answer, so this is Relay's offline answer."; if (a.fallback) { const b = await aiAnswer(q); if (b) a = b; } } }
   else if (a.fallback) { const b = await aiAnswer(q); if (b) a = b; }
   const go = () => { if (a.after) a.after(); if (a.follow === false) { convoUntil = 0; endFollow(); return; } convoUntil = Date.now() + CONVO_MS; setTimeout(() => listen({ auto: true }), 350); };
   if (a.keepLast && S.last) { renderAnswer(S.last.q, S.last.a); speak(a.say, go); return; }
