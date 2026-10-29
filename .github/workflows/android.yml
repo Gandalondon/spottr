@@ -22,7 +22,13 @@ jobs:
       - name: Fixed test signing key (when the secret is set)
         env:
           KEY_B64: ${{ secrets.RELAY_KEYSTORE_B64 }}
-        run: if [ -n "$KEY_B64" ]; then echo "$KEY_B64" | base64 -d > android/app/relay-test.keystore; echo "Signing with the fixed test key"; else echo "No fixed key yet: random debug key"; fi
+        run: |
+          if [ -n "$KEY_B64" ]; then
+            echo "$KEY_B64" | base64 -d > android/app/relay-test.keystore
+            echo "Signing with the fixed test key"
+          else
+            echo "No fixed key yet, using a random debug key"
+          fi
       - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon
         env:
           BUILD_NUMBER: ${{ github.run_number }}
