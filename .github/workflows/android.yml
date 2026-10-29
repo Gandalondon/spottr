@@ -18,6 +18,8 @@ jobs:
           distribution: temurin
           java-version: 17
       - run: npm ci
+      - name: Version number into the app
+        run: sed -i "s/__BUILD__/${{ github.run_number }}/" www/index.html
       - run: npx cap sync android
       - name: Fixed test signing key (when the secret is set)
         env:
