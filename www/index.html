@@ -101,6 +101,13 @@ body.intro .app{opacity:0}
 .vlist h3{margin:16px 0 12px;font:600 16px/24px var(--body);opacity:.75}
 #ovitems,#settings ul{padding-bottom:0}
 .seg{display:flex;gap:8px}
+/* a play button at the right of a voice row: hear it without leaving the screen */
+.vrow{position:relative}
+.vrow > button:first-child{padding-right:72px}
+.vlist li .play{all:unset;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--amber);cursor:pointer}
+.vlist li .on + .play{color:var(--ink)}
+.vlist li .play svg{width:28px;height:28px}
+.vlist li .play[hidden]{display:none}
 .seg button{all:unset;cursor:pointer;flex:1 1 0;text-align:center;height:48px;border-radius:999px;background:#26282D;font:600 16px/48px var(--body)}
 .seg button.on{background:var(--amber);color:var(--ink)}
 .about{margin:0 0 12px;font-size:16px;line-height:24px;text-wrap:pretty}
@@ -128,7 +135,7 @@ body.session .cog,body.listening .cog,body.speaking .cog,body.follow .cog{displa
 <div class="vlist" id="settings" hidden role="dialog" aria-label="Settings">
   <div class="vhead"><button class="back" id="setback" type="button" aria-label="Back"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="m274-450 227 227q9 9 9 21t-9 21q-9 9-21 9t-21-9L181-459q-5-5-7-10t-2-11q0-6 2-11t7-10l278-278q9-9 21-9t21 9q9 9 9 21t-9 21L274-510h496q13 0 21.5 8.5T800-480q0 13-8.5 21.5T770-450H274Z"/></svg></button><h2>Settings</h2></div>
   <h3>Voice</h3>
-  <ul><li><button type="button" id="setvoice"><span class="n" id="setvname"></span><span class="m" id="setvmeta"></span></button></li></ul>
+  <ul><li class="vrow"><button type="button" id="setvoice"><span class="n" id="setvname"></span><span class="m" id="setvmeta"></span></button><button type="button" class="play" id="setplay" aria-label="Hear this voice"></button></li></ul>
   <h3>Speaking speed</h3>
   <div class="seg" id="speeds" role="radiogroup" aria-label="Speaking speed"></div>
   <h3>About</h3>
@@ -249,7 +256,7 @@ const OTHER_MAPS = ["dam", "spaceport", "buried city", "stella montis", "pendola
 const ENEMY_WORDS = Object.keys(ENEMIES);
 
 /* =================== state =================== */
-const EMPTY = { place: null, placeAt: null, minutesLeft: null, minutesAt: null, quest: null, step: 0, last: null, raidAt: null, pending: null, seen: null };
+const EMPTY = { place: null, placeAt: null, minutesLeft: null, minutesAt: null, quest: null, step: 0, last: null, raidAt: null, pending: null, seen: null, exitSaid: null, avoid: [] };
 let S = Object.assign({}, EMPTY);
 try { const saved = JSON.parse(localStorage.getItem("spottr-state") || "null"); if (saved) S = Object.assign(S, saved); } catch (e) {}
 function save() { try { localStorage.setItem("spottr-state", JSON.stringify(S)); } catch (e) {} }
@@ -428,7 +435,7 @@ function answer(raw, opts) {
   if (S.last && S.last.a && has(t, ["more detail", "more details", "tell me more", "say again", "say that again", "repeat", "not sure", "didn't catch", "didnt catch", " what ", "pardon", "explain"]) && t.trim().split(" ").length <= 6) {
     const a = Object.assign({}, S.last.a); a.say = a.full || a.say; return a;
   }
-  if (has(t, [" new raid", "just spawned", " spawned", "dropped in", "dropping in", " new run", "starting a run", "starting a raid", "loading in"])) { S.place = null; S.pending = null; S.minutesLeft = null; S.raidAt = Date.now(); save(); return { show: "New raid. Good luck.", say: "New raid. Good luck. I'll ask where you are when an answer needs it." }; }
+  if (has(t, [" new raid", "just spawned", " spawned", "dropped in", "dropping in", " new run", "starting a run", "starting a raid", "loading in"])) { S.place = null; S.pending = null; S.minutesLeft = null; S.raidAt = Date.now(); S.avoid = []; S.exitSaid = null; save(); return { show: "New raid. Good luck.", say: "New raid. Good luck. I'll ask where you are when an answer needs it." }; }
   if (has(t, [" i died", " died ", " dead ", " killed ", "got me ", " got downed", " i'm down ", " im down "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { show: "Unlucky. Your quest's still here.", say: "Unlucky. Your quest and step are still here when you drop back in.", ctx: S.quest ? S.quest + ", step " + ((S.step || 0) + 1) : "" }; }
   if (has(t, ["extracted", " made it out", " got out "])) { S.place = null; S.minutesLeft = null; S.raidAt = null; save(); return { show: "Nice. Raid cleared.", say: "Nice one. Raid cleared." }; }
   if (has(t, ["where were we", "recap"])) {
@@ -450,6 +457,7 @@ function answer(raw, opts) {
   const dirOnly = !placeMention && !has(t, ["step"]) && (iAm || /\b(from|in|on|around|near) the\b/.test(t)) ? findDir(t) : null;  /* "I'm in the south-east", "evac from the south east" */  /* "I'm in the south-east" */
   if (setsLocation || dirOnly) {
     const w = setsLocation ? { n: placeMention.n, y: placeMention.y, x: placeMention.x } : dirOnly;
+    if (!S.place || S.place.n !== w.n) { S.avoid = []; S.exitSaid = null; S.hatchTold = false; }  /* somewhere new: every exit is back on the table */
     S.place = w; S.placeAt = Date.now(); S.raidAt = S.raidAt || Date.now(); save();
     if (!has(t, ["extract", "exit", "out", "leave", "evac", "escape", "step", "where", "hatch", ...ENEMY_WORDS])) {
       const e = near(w, EXITS);
@@ -465,9 +473,15 @@ function answer(raw, opts) {
     const from = lp.p.rough ? "Around " + lp.p.n + ": " : lp.sure ? "" : "If you're still near " + lp.p.n + ": ";
     return { show: ar.map(a => a.n).join(", ") + ".", say: from + ar.map(a => a.n + " is " + compass(lp.p, a)).join(", ") + ". Nearest way out is " + e.n + ", " + compass(lp.p, e) + ".", map: { you: lp.p, stars: ar.concat([e]) } };
   }
+  /* "can't go that way", "too many enemies", "another one": the last exit (and that direction) is out, give the next best */
+  const OTHER = ["another", "different", "other one", "other way", "something else", "somewhere else", "alternative", "can't go", "cant go", "can not go", "cannot go", "too many", "blocked", "not that one", "not that way", "too dangerous", "too hot", "swarming", "camped", "no good", "next closest", "next nearest", "second closest", "plan b", "backup"];
+  const wantsOther = has(t, OTHER) && (has(t, ["exit", "extract", "evac", "airshaft", "way out", "way", "one", "point"]) || (S.exitSaid && Date.now() - S.exitSaid.at < 10 * 60000));
+  if (wantsOther && S.exitSaid) {
+    S.avoid = Array.from(new Set((S.avoid || []).concat([S.exitSaid.n]))); save();
+  }
   const EXIT_WORDS = ["extract", "exit", "way out", "get out", "get me out", "out of here", "leave", "airshaft", "evac", "escape"];
   const help = /^\s*(help|help me|help help|mayday|sos)\s*$/.test(t);  /* a lone "help" mid-raid means get me out */
-  const wantsExit = (help || has(t, EXIT_WORDS)) && !has(t, [" step "]);
+  const wantsExit = (help || has(t, EXIT_WORDS) || (wantsOther && S.exitSaid)) && !has(t, [" step "]);
   const stepRes = wantsExit ? null : stepIntent(t);
   if (stepRes) return stepRes;
 
@@ -480,21 +494,27 @@ function answer(raw, opts) {
     /* never stall an extraction: use what we know, say how sure we are, and only ask when there's nothing to go on */
     const lp = opts.general ? null : likelyPos();
     if (wantsNearest && lp && !lp.sure) {
-      const best = near(lp.p, EXITS), dir = compass(lp.p, best);
-      return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + best.n + ". Head " + dir + ". That's a guess from " + lp.short + ". Tell me if you've moved.", map: { you: Object.assign({ guess: true }, lp.p), stars: [best] }, ctx: "A guess from " + lp.short + ". Say where you are if you've moved." };
+      const pool0 = EXITS.filter(e => !(S.avoid || []).includes(e.n)), best = near(lp.p, pool0.length ? pool0 : EXITS), dir = compass(lp.p, best);
+      S.exitSaid = { n: best.n, at: Date.now() }; save();
+      return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + (wantsOther ? "Next best is " : "") + best.n + ". Head " + dir + ". That's a guess from " + lp.short + ". Tell me if you've moved.", map: { you: Object.assign({ guess: true }, lp.p), stars: [best] }, ctx: "A guess from " + lp.short + ". Say where you are if you've moved." };
     }
     if (wantsNearest && !lp && !opts.general) { const a = askWhere(raw); a.say = "Where are you, roughly? A place, or just a side of the map. All four airshafts are on the map meanwhile."; a.map = { you: null, stars: EXITS }; return a; }
     if (!lp || !wantsNearest) {
       const tail = "";
       return { show: (rush ? "Move. " : "") + "Four airshafts, marked.", say: rush + "There are four airshafts: Warehouse, Overlook, Forest and Cliffside. They're all marked on the map." + tail, map: { you: psNow === "fresh" ? S.place : null, stars: EXITS } };
     }
-    const best = near(lp.p, EXITS);
+    const pool = EXITS.filter(e => !(S.avoid || []).includes(e.n));
+    if (!pool.length) { S.avoid = []; save(); const hb = near(lp.p, HATCHES); return { show: "That's every airshaft.", say: "That's every airshaft ruled out. Nearest hatch is " + hb.n + ", " + compass(lp.p, hb) + ", if you've got a key. Or wait it out somewhere quiet.", map: { you: lp.p, stars: [hb] } }; }
+    const best = near(lp.p, pool);
     const dir = compass(lp.p, best);
+    S.exitSaid = { n: best.n, at: Date.now() }; save();
+    const alt = wantsOther ? "Next best is " : "";
     if (dist(lp.p, best) < 80 && !lp.p.rough) return { show: "You're at " + best.n + ".", say: rush + "You're right at " + best.n + ". Extract there.", map: { you: null, stars: [best] } };
-    const hb = near(lp.p, HATCHES), hatchTip = dist(lp.p, hb) < dist(lp.p, best) * 0.7 ? " " + hb.n + " is closer, " + compass(lp.p, hb) + ", if you've got a hatch key." : "";
+    const hb = near(lp.p, HATCHES), hatchTip = !(wantsOther && S.hatchTold) && dist(lp.p, hb) < dist(lp.p, best) * 0.7 ? " " + hb.n + " is closer, " + compass(lp.p, hb) + ", if you've got a hatch key." : "";
+    if (hatchTip) { S.hatchTold = true; save(); }
     const lead = lp.p.rough ? "From " + lp.p.n + ", your best bet is " : "";
     const how = lp.p.rough ? ". Head " + dir + "." : ", about " + metres(lp.p, best) + " metres " + dir + ".";
-    return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + (lead ? lead + best.n : best.n) + how + hatchTip, map: { you: lp.p.rough ? Object.assign({ guess: true }, lp.p) : lp.p, stars: hatchTip ? [best, hb] : [best] } };
+    return { show: (rush ? "Move. " : "") + best.n + ", " + dir + ".", say: rush + (alt ? alt + best.n : lead ? lead + best.n : best.n) + how + hatchTip, map: { you: lp.p.rough ? Object.assign({ guess: true }, lp.p) : lp.p, stars: hatchTip ? [best, hb] : [best] } };
   }
   if (has(t, ["hatch"])) {
     if (psNow === "fresh") { const b = near(S.place, HATCHES); const dir = compass(S.place, b); return { show: b.n + ", " + dir + ". Needs a key.", say: "The nearest hatch is " + b.n + ", " + dir + " of you. You'll need a Raider Hatch key.", map: { you: S.place, stars: [b] } }; }
@@ -1036,7 +1056,8 @@ async function handle(q) {
 }
 /* the mic is the button, and so is the screen (except the map). Tap while listening to stop. */
 $("mic").addEventListener("click", e => { e.stopPropagation(); listen(); });
-const TEST_LINE = "Cliffside Airshaft, about 150 metres south-east. Head for the chalk paintings.";
+const TEST_LINE = "Hello, Raider. Cliffside Airshaft, south-east.";
+const PLAY_ICON = '<svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M780-481q0-94-52.5-169T590-759q-12-5-17-16t0-22q5-12 17.5-16.5t25.5.5q101 41 162.5 131T840-481q0 111-61.5 201T616-149q-13 5-25.5.5T573-165q-5-11 0-22t17-16q85-34 137.5-109T780-481ZM280-360H150q-13 0-21.5-8.5T120-390v-180q0-13 8.5-21.5T150-600h130l149-149q14-14 32.5-6.5T480-728v496q0 20-18.5 27.5T429-211L280-360Zm380-120q0 52-26 94t-73 64q-8 4-14.5-1t-6.5-13v-289q0-8 6.5-13t14.5-1q47 22 73 65t26 94ZM420-648 307-540H180v120h127l113 109v-337ZM298-480Z"/></svg>';
 const voiceName = sid => (OV_VOICES.find(v => v.sid === sid) || OV_VOICES[0]).label;
 const show = (id, on) => { $(id).hidden = !on; };
 /* Settings: voice, speaking speed, about. Opened from the cog on the home screen only. */
@@ -1051,12 +1072,15 @@ function renderSettings() {
   SPEEDS.forEach(sp => {
     const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(CFG.speed === sp.v));
     b.textContent = sp.l; if (CFG.speed === sp.v) b.classList.add("on");
-    b.addEventListener("click", () => { CFG.speed = sp.v; saveCfg(); renderSettings(); stopSpeaking(); speak(TEST_LINE); });
+    b.addEventListener("click", () => { CFG.speed = sp.v; saveCfg(); renderSettings(); preview(); });
     box.appendChild(b);
   });
   const ver = $("ver"); ver.textContent = "Relay " + APP_VERSION;
+  $("setplay").innerHTML = PLAY_ICON; $("setplay").hidden = !ovInstalled;
 }
 $("cog").addEventListener("click", e => { e.stopPropagation(); openSettings(); });
+function preview() { stopSpeaking(); const id = ++speakId; setVoiceState("speaking"); const fin = () => { if (id === speakId) setVoiceState("idle"); }; if (ovOn()) ovSpeak(TEST_LINE, fin); else speakPhone(TEST_LINE, fin); }
+$("setplay").addEventListener("click", e => { e.stopPropagation(); preview(); });
 $("setback").addEventListener("click", () => { stopSpeaking(); show("settings", false); renderReady(); });
 $("setvoice").addEventListener("click", () => { show("vlist", true); ovRender(); });
 $("vback").addEventListener("click", () => { stopSpeaking(); clearTimeout(ovPoll); show("vlist", false); renderSettings(); });
@@ -1100,8 +1124,10 @@ async function ovRender() {
   ul.innerHTML = "";
   if (!ovInstalled) return;
   OV_VOICES.forEach(v => {
-    const li = document.createElement("li"), b = document.createElement("button"); b.type = "button";
+    const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; li.className = "vrow";
     b.innerHTML = '<span class="n"></span><span class="m"></span>'; b.querySelector(".n").textContent = v.label;
+    const pb = document.createElement("button"); pb.type = "button"; pb.className = "play"; pb.setAttribute("aria-label", "Hear " + v.label); pb.innerHTML = PLAY_ICON;
+    pb.addEventListener("click", e => { e.stopPropagation(); b.click(); });  /* hear it: same as tapping the row, which also picks it */
     const on = !CFG.off && CFG.sid === v.sid;
     b.querySelector(".m").textContent = on ? "Selected" : "Tap to hear"; if (on) { b.classList.add("on"); b.setAttribute("aria-current", "true"); }
     b.addEventListener("click", () => {
@@ -1111,7 +1137,7 @@ async function ovRender() {
       stopSpeaking(); const id = ++speakId; setVoiceState("speaking");
       ovSpeak(TEST_LINE, () => { if (id === speakId) setVoiceState("idle"); });
     });
-    li.appendChild(b); ul.appendChild(li);
+    li.appendChild(b); li.appendChild(pb); ul.appendChild(li);
   });
 }
 $("ovget").addEventListener("click", async () => { try { await OV.download(); } catch (e) {} ovRender(); });

@@ -99,6 +99,11 @@ module.exports = [
   { set: NONE, say: "I'm by the highway collapse", want: { place: "Highway Collapse" } },
   { set: NONE, say: ["I'm at the farm", "what's around me"], want: { near: "Ruined Homestead" } },
 
+  /* "not that one": ruling an exit out (29 Oct test: kept saying north-east) */
+  { set: NONE, say: ["I'm at the farm", "where's the nearest evac", "I can't go that way, there's too many enemies, I need a different evac point"], want: { near: "Next best is (Forest|Cliffside|Warehouse) Airshaft" } },
+  { set: NONE, say: ["I'm at the farm", "evac", "another one", "not that one either"], want: { near: "Next best is" } },
+  { set: NONE, say: ["I'm in the village", "get me out", "too many enemies, somewhere else"], want: { near: "Next best is" } },
+
   /* raid events */
   { set: HTR, say: "I died", want: { died: true } },
   { set: HTR, say: "I'm dead", want: { died: true } },
