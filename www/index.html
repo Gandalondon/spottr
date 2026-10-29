@@ -109,6 +109,7 @@ body.intro .app{opacity:0}
   <h2>Voices</h2>
   <p class="vnote" id="vnote">Tap a voice to hear it. The one you tap last is the one Relay uses.</p>
   <form class="gkey" id="gkey"><label for="gkin">Gemini key, for natural conversation (stays on this phone)</label><input id="gkin" type="password" autocomplete="off" placeholder="Paste your Google AI Studio key"><div class="gkrow"><button type="submit">Save</button><button type="button" id="gkoff">Remove</button></div><p id="gkstat"></p></form>
+  <form class="gkey" id="vkey"><label for="vkin">Voice key, Google Cloud text-to-speech (stays on this phone)</label><input id="vkin" type="password" autocomplete="off" placeholder="Paste your Google Cloud API key"><div class="gkrow"><button type="submit">Save</button><button type="button" id="vkoff">Remove</button></div><p id="vkstat"></p></form>
   <ul id="vitems"></ul>
 </div>
 <script src="leaflet.js"></script>
@@ -515,8 +516,12 @@ function speak(s, done) {
   const id = ++speakId;
   const fin = ok => { if (id !== speakId) return; setVoiceState("idle"); if (ok && done) done(); };
   setVoiceState("speaking");
-  if (gKey() && gTtsOk) {
-    gemSpeak(s).then(r => { if (r === true) fin(true); else if (r === "stopped") fin(false); else speakPhone(s, fin); });
+  if (vKey() || (gKey() && gTtsOk)) {
+    (async () => {
+      let r = vKey() && cloudOk ? await cloudSpeak(s) : false;
+      if (r === false && gKey() && gTtsOk) r = await gemSpeak(s);
+      if (r === true) fin(true); else if (r === "stopped") fin(false); else speakPhone(s, fin);
+    })();
     return;
   }
   speakPhone(s, fin);
@@ -833,6 +838,30 @@ async function gemAnswer(q) {
   gHistory.push({ player: q, relay: a.say }); gHistory = gHistory.slice(-8);
   return a;
 }
+/* Google Cloud voice (Chirp 3 HD): reads exactly the words given, in a steady tone. Free for the first 1 million
+   characters a month. Used first when a voice key is saved; then Gemini's voice; then the phone's voice. */
+const VKEY_STORE = "relay-voice-key", CLOUD_VOICE = "en-GB-Chirp3-HD-Charon", CLOUD_RATE = 1.05;
+let cloudOk = true;
+const vKey = () => { try { return localStorage.getItem(VKEY_STORE) || ""; } catch (e) { return ""; } };
+async function cloudSpeak(text) {
+  if (!vKey() || !cloudOk || !navigator.onLine) return false;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 6000);
+  try {
+    const r = await fetch("https://texttospeech.googleapis.com/v1/text:synthesize", { method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json", "X-Goog-Api-Key": vKey() },
+      body: JSON.stringify({ input: { text }, voice: { languageCode: "en-GB", name: CLOUD_VOICE }, audioConfig: { audioEncoding: "MP3", speakingRate: CLOUD_RATE } }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || ("HTTP " + r.status));
+    const bin = atob(j.audioContent), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const ctx = gAudio || (gAudio = new (window.AudioContext || window.webkitAudioContext)());
+    if (ctx.state === "suspended") await ctx.resume();
+    const buf = await ctx.decodeAudioData(bytes.buffer);
+    const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination);
+    return await new Promise(res => { src.onended = () => res(true); gemSpeak.stop = () => { try { src.stop(); } catch (e) {} res("stopped"); }; src.start(); });
+  } catch (e) {
+    if (/denied|invalid|disabled|billing|quota|not been used/i.test(e.message)) cloudOk = false;
+    setCtx("Voice: " + (e.name === "AbortError" ? "took too long" : e.message.slice(0, 90)) + ". Using another voice."); return false;
+  } finally { clearTimeout(timer); }
+}
 /* the sign-off: a short, quiet burst of radio static after each answer. Made here, so it's the same every time. */
 const SQUELCH_VOL = 0;  /* off: Tony found the end static annoying. 0.02 to 0.04 if it ever comes back */
 function squelch(ctx) {
@@ -883,7 +912,7 @@ $("mic").addEventListener("click", e => { e.stopPropagation(); listen(); });
 /* tapping the greeting opens the voice list: every English voice the phone reports, each playable, no microphone involved */
 const TEST_LINE = "You need to get to the locker room. Take the stairs on your right, then the door is straight ahead.";
 async function openVoices() {
-  const box = $("vlist"), ul = $("vitems"); box.hidden = false; ul.innerHTML = ""; gkStatus();
+  const box = $("vlist"), ul = $("vitems"); box.hidden = false; ul.innerHTML = ""; gkStatus(); vkStatus();
   let all = [];
   try { const r = RV ? await RV.voices() : null; all = (r && r.voices) || []; } catch (e) {}
   const fixed = [{ name: "@system", rate: 1.0, label: "Test A: settings voice, normal speed", meta: "Speed 1.0 instead of 0.95" },
@@ -910,6 +939,9 @@ async function openVoices() {
 }
 function gkStatus() { const k = gKey(); $("gkstat").textContent = k ? "Gemini mode on: natural replies and Gemini's voice (needs internet)." : "Gemini mode off: Relay works offline with the phone's voice."; $("gkin").value = ""; }
 $("gkey").addEventListener("submit", e => { e.preventDefault(); const v = $("gkin").value.trim(); if (v.length < 20) { $("gkstat").textContent = "That doesn't look like a key."; return; } try { localStorage.setItem(GKEY_STORE, v); } catch (er) {} gTtsOk = true; gkStatus(); });
+function vkStatus() { $("vkstat").textContent = vKey() ? "Voice key saved: Google Cloud UK voice (needs internet)." : "No voice key: Gemini's voice if available, otherwise the phone's."; $("vkin").value = ""; }
+$("vkey").addEventListener("submit", e => { e.preventDefault(); const v = $("vkin").value.trim(); if (v.length < 20) { $("vkstat").textContent = "That doesn't look like a key."; return; } try { localStorage.setItem(VKEY_STORE, v); } catch (er) {} cloudOk = true; vkStatus(); speak("Voice check. Relay standing by."); });
+$("vkoff").addEventListener("click", () => { try { localStorage.removeItem(VKEY_STORE); } catch (er) {} vkStatus(); });
 $("gkoff").addEventListener("click", () => { try { localStorage.removeItem(GKEY_STORE); } catch (er) {} gkStatus(); });
 $("vclose").addEventListener("click", () => { stopSpeaking(); $("vlist").hidden = true; loadVoices(); });
 $("word").addEventListener("click", () => {
