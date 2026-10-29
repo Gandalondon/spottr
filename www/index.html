@@ -648,9 +648,11 @@ function keepConversation() {
   if (Date.now() < convoUntil && !document.hidden && S.last) setTimeout(() => { if (!listening && !document.body.classList.contains("speaking")) listen({ auto: true }); }, 250);
   else { convoUntil = 0; endFollow(); }
 }
-function heard(text) { listening = false; fastFails = 0; handle(text); }
+let cancelledAt = 0;  /* after X while listening, ignore whatever the recogniser still sends back */
+function heard(text) { if (Date.now() - cancelledAt < 3000) { listening = false; return; } listening = false; fastFails = 0; handle(text); }
 function nothingHeard(startedAt, err) {
   listening = false;
+  if (Date.now() - cancelledAt < 3000) return;
   if (followMode) {
     if (Date.now() - startedAt < 800) fastFails++; else fastFails = 0;
     if (fastFails >= 3 || err === "fatal") { convoUntil = 0; endFollow(); return; }
@@ -743,7 +745,7 @@ function renderReady() {
 }
 function renderListening() {
   clearMap(); setVoiceState("listening"); bars(true);
-  document.body.classList.remove("follow"); document.body.classList.add("listening");
+  document.body.classList.remove("follow"); document.body.classList.add("listening"); $("close").hidden = false;  /* X cancels the question */
   setWord("Go\nahead."); setSub(""); setCtx("");
   $("stage").innerHTML = "";
 }
@@ -1107,7 +1109,11 @@ async function ovRender() {
 $("ovget").addEventListener("click", async () => { try { await OV.download(); } catch (e) {} ovRender(); });
 $("word").addEventListener("click", () => listen());
 document.querySelector(".app").addEventListener("click", e => { if (e.target.closest(".mapwrap,.close,.mic,.word,.cog")) return; listen(); });
-$("close").addEventListener("click", e => { e.stopPropagation(); stopSpeaking(); stopListening(); endFollow(); const v = S.voice; S = Object.assign({}, EMPTY); S.voice = v; S.voiceV = 2; S.voicePicked = !!v; save(); renderReady(); });
+$("close").addEventListener("click", e => {
+  e.stopPropagation();
+  /* listening for a first question: X just cancels it and goes back. Quest and step are kept. */
+  if (document.body.classList.contains("listening")) { cancelledAt = Date.now(); listening = false; stopListening(); stopSpeaking(); endFollow(); renderBack(); return; }
+  stopSpeaking(); stopListening(); endFollow(); const v = S.voice; S = Object.assign({}, EMPTY); S.voice = v; S.voiceV = 2; S.voicePicked = !!v; save(); renderReady(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) { convoUntil = 0; stopListening(); stopSpeaking(); endFollow(); } });
 
 loadVoices();
