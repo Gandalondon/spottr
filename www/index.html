@@ -785,13 +785,14 @@ function gFacts() {
   };
 }
 function gPrompt(q) {
-  return `You are Relay, a voice companion for players of the video game ARC Raiders, on the map Blue Gate. You speak like a calm, friendly radio operator: natural, warm, British English, short. One or two sentences, under 30 words. No lists, no markdown.
+  return `You are Relay, a voice companion for players of the video game ARC Raiders, on the map Blue Gate. Speak naturally and warmly, calm and clear, British English, short: one or two sentences, under 30 words. No lists, no markdown.
 Use ONLY the facts in the JSON below. Never invent routes, places, items or steps. If you don't know, say so briefly and say what you need.
+You can't change the app, its voice or its sounds: never offer to. The microphone stays on between answers, so it may catch the player talking to someone else, reading something out, or the TV. If what you heard isn't meant for you, use the command "ignore" and an empty reply.
 The player talks casually, mid-game, maybe in a hurry; speech recognition may mishear words (for example "home to boost" means "Home to Roost").
 Facts: ${JSON.stringify(gFacts())}
 Recent conversation: ${JSON.stringify(gHistory.slice(-6))}
 The player just said: "${q}"
-Reply as JSON: {"command": one of "done" | "repeat" | "way out" | "hatch" | "i died" | "new raid" | "extracted" | "thanks" | "quest NAME step N" | "at PLACE" | "nearest ENEMY" | "chat", "reply": what you say out loud}.
+Reply as JSON: {"command": one of "done" | "repeat" | "way out" | "hatch" | "i died" | "new raid" | "extracted" | "thanks" | "quest NAME step N" | "at PLACE" | "nearest ENEMY" | "chat" | "ignore", "reply": what you say out loud}.
 "done" = they finished the current step or arrived; your reply then gives the NEXT step. "repeat" = they want the current step again. "chat" = anything else (a question you can answer from the facts, or small talk); state doesn't change.`;
 }
 async function gCall(model, body, ms) {
@@ -817,6 +818,7 @@ async function gemAnswer(q) {
   if (!j) { gLastErr = err; localStorage.removeItem("relay-gemini-models"); G_MODELS = null; return null; }
   let out; try { out = JSON.parse(j.candidates[0].content.parts[0].text); } catch (e) { return null; }
   const cmdLine = (out.command || "").toString(), reply = (out.reply || "").toString().trim();
+  if (cmdLine.toLowerCase() === "ignore") return { ignore: true, ctx: "Not for me: \u201C" + q + "\u201D" };
   if (!reply) return null;
   const cmd = cmdLine.toLowerCase() === "chat" ? null : aiToCommand(cmdLine);
   let a;
@@ -830,6 +832,17 @@ async function gemAnswer(q) {
   gHistory.push({ player: q, relay: a.say }); gHistory = gHistory.slice(-8);
   return a;
 }
+/* the sign-off: a short, quiet burst of radio static after each answer. Made here, so it's the same every time. */
+const SQUELCH_VOL = 0.035;  /* quiet: raise or lower to taste */
+function squelch(ctx) {
+  try {
+    const len = Math.floor(ctx.sampleRate * 0.18), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) { const env = Math.min(1, i / (len * 0.08)) * Math.pow(1 - i / len, 2); d[i] = (Math.random() * 2 - 1) * env; }
+    const src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 0.8; g.gain.value = SQUELCH_VOL;
+    src.buffer = buf; src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start();
+  } catch (e) {}
+}
 /* Gemini's own voice: whole clip from Google, played here. Falls back to the phone's voice if it fails. */
 let gAudio = null;
 async function gemSpeak(text) {
@@ -837,7 +850,7 @@ async function gemSpeak(text) {
   try {
     await gPickModels();
     const ttsModel = (G_TTS && G_TTS[0]) || G_TTS_MODEL;
-    const j = await gCall(ttsModel, { contents: [{ parts: [{ text: "Say calmly and clearly, like a friendly radio operator: " + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: G_VOICE } } } } }, 7000);
+    const j = await gCall(ttsModel, { contents: [{ parts: [{ text: text }] }]  /* the words only: any instruction here gets read out, or turned into sound effects */, generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: G_VOICE } } } } }, 7000);
     const part = j.candidates[0].content.parts.find(p => p.inlineData);
     const bin = atob(part.inlineData.data), n = bin.length / 2;
     const ctx = gAudio || (gAudio = new (window.AudioContext || window.webkitAudioContext)());
@@ -845,7 +858,7 @@ async function gemSpeak(text) {
     const buf = ctx.createBuffer(1, n, 24000), ch = buf.getChannelData(0);
     for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v >= 32768) v -= 65536; ch[i] = v / 32768; }
     const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination);
-    return await new Promise(res => { src.onended = () => res(true); gemSpeak.stop = () => { try { src.stop(); } catch (e) {} res("stopped"); }; src.start(); });
+    return await new Promise(res => { src.onended = () => { squelch(ctx); setTimeout(() => res(true), 220); }; gemSpeak.stop = () => { try { src.stop(); } catch (e) {} res("stopped"); }; src.start(); });
   } catch (e) { if (/quota|exhausted|429|not found|not supported/i.test(e.message)) gTtsOk = false; setCtx("Gemini voice: " + e.message.slice(0, 80) + ". Using the phone's voice."); return false; }
 }
 
@@ -853,7 +866,9 @@ async function handle(q) {
   q = (q || "").trim(); if (!q) return;
   let a = S.pending ? resolvePending(q) : null;
   if (!a) a = answer(q);
-  if (gKey()) { setCtx("Thinking..."); const t0 = Date.now(); const g = await gemAnswer(q); if (g) a = g; else a.ctx = "Gemini didn't answer (" + (gLastErr || "no reply") + ", " + (Date.now() - t0) + " ms), so this is Relay's offline answer."; }
+  if (gKey()) { setCtx("Thinking..."); const t0 = Date.now(); const g = await gemAnswer(q);
+    if (g && g.ignore) { setCtx(g.ctx); setVoiceState("idle"); if (Date.now() < convoUntil) setTimeout(() => listen({ auto: true }), 350); return; }  /* side talk: stay quiet, keep listening */
+    if (g) a = g; else a.ctx = "Gemini didn't answer (" + (gLastErr || "no reply") + ", " + (Date.now() - t0) + " ms), so this is Relay's offline answer."; }
   else if (a.fallback) { const b = await aiAnswer(q); if (b) a = b; }
   const go = () => { if (a.after) a.after(); if (a.follow === false) { convoUntil = 0; endFollow(); return; } convoUntil = Date.now() + CONVO_MS; setTimeout(() => listen({ auto: true }), 350); };
   if (a.keepLast && S.last) { renderAnswer(S.last.q, S.last.a); speak(a.say, go); return; }
