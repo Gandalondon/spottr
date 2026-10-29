@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(SystemBarsPlugin.class);
+        registerPlugin(RelayVoicePlugin.class);
         super.onCreate(savedInstanceState);
         // Keep the screen on while Spottr is open beside the game.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);

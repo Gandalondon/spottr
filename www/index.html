@@ -396,21 +396,24 @@ function answer(raw, opts) {
 const CAP = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() ? window.Capacitor.Plugins : null;
 const WebRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-/* Spoken voice: prefer Google's natural en-GB voices on the phone ("network" ones sound best, "local" work offline).
-   Say "change voice" to try the next one; Relay remembers your pick. */
+/* Spoken voice: Google's natural UK voices, picked by their real name (for example en-gb-x-gbd-local).
+   Only voices that are actually downloaded count, so Relay never drops back to the old robotic fallback voice.
+   Offline ("local") voices come first: they start instantly. Say "change voice" to hear the next one; Relay remembers your pick. */
+const RV = CAP && CAP.RelayVoice ? CAP.RelayVoice : null;
+const RATE = 0.95;  /* a touch calmer than Google's default */
 let VOICES = [], voiceIdx = -1, webVoice = null;
-const VOICE_PREF = ["en-gb-x-gbd-network", "en-gb-x-gbb-network", "en-gb-x-gbc-network", "en-gb-x-gbg-network", "en-gb-x-rjs-network", "en-gb-x-gbd-local", "en-gb-x-gbb-local", "en-gb-x-gbc-local"];
 async function loadVoices() {
   try {
-    if (CAP && CAP.TextToSpeech) {
-      const r = await CAP.TextToSpeech.getSupportedVoices();
+    if (RV) {
+      const r = await RV.voices();
       const all = (r && r.voices) || [];
-      VOICES = all.map((v, i) => ({ i, name: (v.name || v.voiceURI || "").toLowerCase(), lang: (v.lang || "").replace("_", "-") })).filter(v => /^en-gb/i.test(v.lang) || v.name.startsWith("en-gb"));
-      const score = v => { const k = VOICE_PREF.indexOf(v.name); return k >= 0 ? k : v.name.includes("network") ? 50 : 100; };
-      VOICES.sort((a, b) => score(a) - score(b));
+      const gb = all.filter(v => /^en-GB/i.test(v.lang) && v.installed);
+      const natural = gb.filter(v => /-x-/.test(v.name));      /* Google's neural voices; "en-GB-language" is the vague catch-all */
+      VOICES = (natural.length ? natural : gb).map(v => ({ name: v.name, network: !!v.network, quality: v.quality || 0 }));
+      VOICES.sort((a, b) => (a.network - b.network) || (b.quality - a.quality) || a.name.localeCompare(b.name));
     } else if (window.speechSynthesis) {
       const v = speechSynthesis.getVoices();
-      VOICES = v.filter(x => /en-GB/i.test(x.lang)).map((x, i) => ({ i, name: x.name, web: x }));
+      VOICES = v.filter(x => /en-GB/i.test(x.lang)).map(x => ({ name: x.name, web: x }));
       VOICES.sort((a, b) => (/google|natural|online/i.test(b.name) ? 1 : 0) - (/google|natural|online/i.test(a.name) ? 1 : 0));
     }
     const saved = S.voice ? VOICES.findIndex(v => v.name === S.voice) : -1;
@@ -419,10 +422,14 @@ async function loadVoices() {
   } catch (e) {}
 }
 try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices; } catch (e) {}
+const voiceLabel = v => v ? v.name.replace(/^en-gb-x-/i, "").replace(/-(local|network)$/i, (m, k) => k === "local" ? " (offline)" : " (online)") : "";
 function nextVoice() {
-  if (VOICES.length < 2) return { show: "Only one voice here.", say: "This phone only has one English voice installed.", keepLast: true, follow: true };
+  if (VOICES.length < 2) {
+    if (RV) RV.install().catch(() => {});
+    return { show: "Only one voice here.", say: "This phone only has one natural English voice. I've opened Google's voice settings so you can download more.", keepLast: true, follow: false };
+  }
   voiceIdx = (voiceIdx + 1) % VOICES.length; S.voice = VOICES[voiceIdx].name; webVoice = VOICES[voiceIdx].web || null; save();
-  return { show: "Voice " + (voiceIdx + 1) + " of " + VOICES.length + ".", say: "How's this voice? Say change voice to hear another.", keepLast: true, follow: true };
+  return { show: "Voice " + (voiceIdx + 1) + " of " + VOICES.length + ": " + voiceLabel(VOICES[voiceIdx]) + ".", say: "How's this voice? Say change voice to hear another.", ctx: voiceLabel(VOICES[voiceIdx]), keepLast: true, follow: true };
 }
 
 let speakId = 0;
@@ -431,15 +438,14 @@ function speak(s, done) {
   const id = ++speakId;
   const fin = ok => { if (id !== speakId) return; setVoiceState("idle"); if (ok && done) done(); };
   setVoiceState("speaking");
-  if (CAP && CAP.TextToSpeech) {
-    const opt = { text: s, lang: "en-GB", rate: 1.0, pitch: 1.0, volume: 1.0, category: "playback" };
-    if (voiceIdx >= 0 && VOICES[voiceIdx]) opt.voice = VOICES[voiceIdx].i;
-    CAP.TextToSpeech.stop().catch(() => {}).finally(() => CAP.TextToSpeech.speak(opt).then(() => fin(true)).catch(() => fin(false)));
+  if (RV) {
+    const v = voiceIdx >= 0 ? VOICES[voiceIdx] : null;
+    RV.speak({ text: s, voice: v ? v.name : "", rate: RATE, pitch: 1.0 }).then(r => fin(!(r && r.stopped))).catch(() => fin(false));
     return;
   }
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(s); if (webVoice) u.voice = webVoice; u.lang = "en-GB"; u.rate = 1.0; u.onend = () => fin(true); u.onerror = () => fin(false); speechSynthesis.speak(u); } catch (e) { fin(false); }
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(s); if (webVoice) u.voice = webVoice; u.lang = "en-GB"; u.rate = RATE; u.onend = () => fin(true); u.onerror = () => fin(false); speechSynthesis.speak(u); } catch (e) { fin(false); }
 }
-function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (CAP && CAP.TextToSpeech) CAP.TextToSpeech.stop(); else speechSynthesis.cancel(); } catch (e) {} }
+function stopSpeaking() { speakId++; setVoiceState("idle"); try { if (RV) RV.stop(); else speechSynthesis.cancel(); } catch (e) {} }
 
 /* =================== listening =================== */
 /* Conversation: after every answer Relay keeps listening, re-arming the microphone each time the phone's recogniser
