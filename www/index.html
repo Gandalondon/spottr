@@ -69,6 +69,13 @@ body.listening .wave{display:flex}
 .wave i:nth-child(1){animation-delay:-.45s}.wave i:nth-child(2){animation-delay:-.15s}.wave i:nth-child(3){animation-delay:-.3s}.wave i:nth-child(4){animation-delay:-.6s}.wave i:nth-child(5){animation-delay:-.75s}
 @keyframes wv{0%,100%{transform:scaleY(.6)}50%{transform:scaleY(1)}}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* start: the icon's three lines carry on from Android's splash, travel down and out of the screen, then the greeting fades in. Once per launch. */
+#intro{position:fixed;inset:0;z-index:50;pointer-events:none;background:#1C1E22;transition:background-color .2s linear}
+#intro.clear{background-color:transparent}
+#intro path{fill:none;stroke:#F2B33D;animation:introgo .48s cubic-bezier(.45,0,.9,.6) forwards}
+@keyframes introgo{to{stroke-dashoffset:var(--to)}}
+body.intro .app{opacity:0}
+.app{transition:opacity .2s ease-out}
 @media (prefers-reduced-motion:reduce){body{transition:none} .wave i,.mic svg{animation:none!important}}
 </style>
 </head>
@@ -611,6 +618,27 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) { con
 
 loadVoices();
 if (S.last) renderAnswer(S.last.q, S.last.a); else renderReady();
+/* =================== start animation =================== */
+(function intro() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const Wd = innerWidth, Ht = innerHeight, S = 160;             /* Android 12+ splash shows the icon's 72-unit window at 160dp, centred */
+  const L0 = (Wd - S) / 2, T0 = (Ht - S) / 2, s = S / 72, HOLD = 250, DUR = 480, STEP = 80;
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("width", Wd); svg.setAttribute("height", Ht); svg.setAttribute("aria-hidden", "true");
+  const box = document.createElement("div"); box.id = "intro"; box.appendChild(svg); document.body.appendChild(box); document.body.classList.add("intro");
+  [46, 30, 14].forEach((r0, j) => {                              /* outer line leaves first */
+    const r = r0 * s, Y = T0 + 58 * s, X = L0 + 14 * s, y0 = Y - r;
+    const h = X - L0, arc = Math.PI * r / 2, vis = h + arc + (T0 + S - Y), tot = h + arc + (Ht + 40 - Y);
+    const p = document.createElementNS(ns, "path");
+    p.setAttribute("d", "M " + L0 + " " + y0 + " H " + X + " A " + r + " " + r + " 0 0 1 " + (X + r) + " " + Y + " V " + (Ht + 40));
+    p.setAttribute("stroke-width", 10 * s);
+    p.style.strokeDasharray = vis.toFixed(1) + " 4000"; p.style.setProperty("--to", (-tot).toFixed(1));
+    p.style.animationDelay = (HOLD + j * STEP) + "ms"; svg.appendChild(p);
+  });
+  const end = HOLD + DUR + STEP * 2;
+  setTimeout(() => { document.body.classList.remove("intro"); box.classList.add("clear"); }, end - 160);
+  setTimeout(() => box.remove(), end + 300);
+})();
 async function keepAwake() { try { if (CAP && CAP.KeepAwake) await CAP.KeepAwake.keepAwake(); else if (navigator.wakeLock) await navigator.wakeLock.request("screen"); } catch (e) {} }
 keepAwake(); document.addEventListener("visibilitychange", () => { if (!document.hidden) keepAwake(); });
 if ("serviceWorker" in navigator && !CAP && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
