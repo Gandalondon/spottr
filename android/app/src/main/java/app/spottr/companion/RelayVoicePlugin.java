@@ -1,6 +1,9 @@
 package app.spottr.companion;
 
+import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
@@ -32,6 +35,7 @@ public class RelayVoicePlugin extends Plugin {
     private final List<PluginCall> waiting = new ArrayList<>();
     private final Map<String, PluginCall> speaking = new HashMap<>();
     private int seq = 0;
+    private int lastMode = -1;
 
     @Override
     public void load() {
@@ -39,7 +43,11 @@ public class RelayVoicePlugin extends Plugin {
             synchronized (this) {
                 inited = true;
                 ready = status == TextToSpeech.SUCCESS;
-                if (ready) listen();
+                if (ready) {
+                    listen();
+                    // speak as an assistant reply on the media path, never as call audio
+                    tts.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+                }
                 for (PluginCall c : waiting) run(c);
                 waiting.clear();
             }
@@ -68,7 +76,7 @@ public class RelayVoicePlugin extends Plugin {
         PluginCall c;
         synchronized (this) { c = speaking.remove(id); }
         if (c == null) return;
-        if (ok) { JSObject r = new JSObject(); r.put("stopped", stopped); c.resolve(r); } else c.reject("speech failed");
+        if (ok) { JSObject r = new JSObject(); r.put("stopped", stopped); r.put("mode", lastMode); c.resolve(r); } else c.reject("speech failed");
     }
 
     /** queue calls that arrive before the engine has started */
@@ -110,6 +118,9 @@ public class RelayVoicePlugin extends Plugin {
         r.put("engine", engine);
         Voice def = tts.getDefaultVoice();
         r.put("default", def != null ? def.getName() : "");
+        Voice cur = tts.getVoice();
+        r.put("current", cur != null ? cur.getName() : "");
+        if (cur != null) { r.put("currentQuality", cur.getQuality()); r.put("currentNetwork", cur.isNetworkConnectionRequired()); }
         r.put("voices", list);
         call.resolve(r);
     }
@@ -135,6 +146,14 @@ public class RelayVoicePlugin extends Plugin {
         }
         tts.setSpeechRate(rate);
         tts.setPitch(pitch);
+        // the microphone can leave the phone in call mode, which gates the gaps between words: put it back to normal first
+        int modeBefore = -1;
+        try {
+            AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            modeBefore = am.getMode();
+            if (modeBefore != AudioManager.MODE_NORMAL) am.setMode(AudioManager.MODE_NORMAL);
+        } catch (Exception ignored) {}
+        lastMode = modeBefore;
         String id = "relay-" + (++seq);
         synchronized (this) { speaking.put(id, call); }
         Bundle p = new Bundle();

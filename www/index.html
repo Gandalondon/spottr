@@ -319,6 +319,7 @@ function answer(raw, opts) {
   const ps = opts.general ? "general" : posState();
 
   if (has(t, ["change voice", "different voice", "another voice", "next voice", "new voice"])) return nextVoice();
+  if (has(t, ["voice test", "test voice", "test the voice", "testing"])) return { show: "Voice test.", say: "You need to get to the locker room. Take the stairs on your right, then the door is straight ahead.", ctx: voiceInfo(), keepLast: false, follow: true };
   if (has(t, ["that's all", "thats all", "stop listening", "thanks", "thank you", "cheers", "that's it", "thats it"]) && t.trim().split(" ").length <= 4) return { show: "Standing by.", say: "Standing by.", follow: false, keepLast: true };
   if (S.last && S.last.a && has(t, ["more detail", "more details", "tell me more", "say again", "say that again", "repeat", "not sure", "didn't catch", "didnt catch", " what ", "pardon", "explain"]) && t.trim().split(" ").length <= 6) {
     const a = Object.assign({}, S.last.a); a.say = a.full || a.say; return a;
@@ -423,7 +424,7 @@ async function loadVoices() {
   try {
     if (S.voiceV !== 2) { S.voice = ""; S.voiceV = 2; save(); }  /* forget picks made with earlier builds */
     if (RV) {
-      const r = await RV.voices();
+      const r = await RV.voices(); VINFO = r;
       const all = (r && r.voices) || [];
       /* first choice is no choice: Google's own default voice, the one its settings' Play button uses */
       const good = all.filter(v => /^en-GB/i.test(v.lang) && v.installed && /-x-/.test(v.name) && !/#/.test(v.name) && (v.quality || 0) >= 400 && v.name !== r.default);
@@ -450,6 +451,13 @@ function nextVoice() {
   return { show: "Voice " + (voiceIdx + 1) + " of " + VOICES.length + ": " + voiceLabel(VOICES[voiceIdx]) + ".", say: "How's this voice? Say change voice to hear another.", ctx: voiceLabel(VOICES[voiceIdx]), keepLast: true, follow: true };
 }
 
+/* what the phone is actually doing, shown on screen by "voice test" */
+let lastMode = null, VINFO = null;
+function voiceInfo() {
+  const modes = { 0: "normal", 1: "ringtone", 2: "call", 3: "call (app)" };
+  const v = voiceIdx >= 0 ? VOICES[voiceIdx] : null;
+  return "Voice: " + (VINFO && VINFO.current ? VINFO.current : voiceLabel(v) || "?") + (VINFO && VINFO.currentQuality ? ", quality " + VINFO.currentQuality : "") + (VINFO && VINFO.currentNetwork ? ", online" : "") + ". Audio before last answer: " + (lastMode == null ? "?" : (modes[lastMode] || lastMode)) + ".";
+}
 let speakId = 0;
 function speak(s, done) {
   if (!s) { if (done) done(); return; }
@@ -458,7 +466,7 @@ function speak(s, done) {
   setVoiceState("speaking");
   if (RV) {
     const v = voiceIdx >= 0 ? VOICES[voiceIdx] : null;
-    RV.speak({ text: s, voice: v ? v.name : "", rate: RATE, pitch: 1.0 }).then(r => fin(!(r && r.stopped))).catch(() => fin(false));
+    RV.speak({ text: s, voice: v ? v.name : "", rate: RATE, pitch: 1.0 }).then(r => { if (r && r.mode != null) lastMode = r.mode; RV.voices().then(x => { VINFO = x; }).catch(() => {}); fin(!(r && r.stopped)); }).catch(() => fin(false));
     return;
   }
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(s); if (webVoice) u.voice = webVoice; u.lang = "en-GB"; u.rate = RATE; u.onend = () => fin(true); u.onerror = () => fin(false); speechSynthesis.speak(u); } catch (e) { fin(false); }
