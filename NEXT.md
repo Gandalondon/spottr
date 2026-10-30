@@ -7,3 +7,4 @@
 5. **Place names on the maps**, drawn by Relay from the 28 Blue Gate areas.
 6. **Loot value tiers** as coloured, weighted labels (bold plus a marker for high value, not colour alone). Only if there's a trustworthy tier source; explore on the canvas first; watch the clash with amber.
 7. **Tony's testing notes** from his raids, each one added to tests/phrases.js.
+8. **Start animation lines up with the icon.** The three lines should start exactly where Android draws the app icon (check size and the status bar offset; Tony to send a screen recording of Relay opening).
